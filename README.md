@@ -18,7 +18,7 @@ make docker
 ### Start recording
 
 ```sh
-SITE_URL="http://localhost:8065" USERNAME="calls-recorder" PASSWORD="" TEAM_NAME="calls" CHANNEL_ID="he1kbdi6kjb3fpte7og9z1zsyo" make run
+MM_SITE_URL="http://localhost:8065" MM_USERNAME="calls-recorder" MM_PASSWORD="" MM_TEAM_NAME="calls" MM_CHANNEL_ID="he1kbdi6kjb3fpte7og9z1zsyo" make run
 ```
 
 ### Stop recording

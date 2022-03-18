@@ -156,23 +156,23 @@ func main() {
 	}()
 
 	var cfg browserConfig
-	cfg.siteURL = os.Getenv("SITE_URL")
+	cfg.siteURL = os.Getenv("MM_SITE_URL")
 	if cfg.siteURL == "" {
 		log.Fatalf("site URL cannot be empty")
 	}
-	teamName := os.Getenv("TEAM_NAME")
+	teamName := os.Getenv("MM_TEAM_NAME")
 	if teamName == "" {
 		log.Fatalf("team name cannot be empty")
 	}
-	channelID := os.Getenv("CHANNEL_ID")
+	channelID := os.Getenv("MM_CHANNEL_ID")
 	if channelID == "" {
 		log.Fatalf("channel id cannot be empty")
 	}
-	cfg.username = os.Getenv("USERNAME")
+	cfg.username = os.Getenv("MM_USERNAME")
 	if cfg.username == "" {
 		log.Fatalf("username cannot be empty")
 	}
-	cfg.password = os.Getenv("PASSWORD")
+	cfg.password = os.Getenv("MM_PASSWORD")
 	if cfg.password == "" {
 		log.Fatalf("password cannot be empty")
 	}
