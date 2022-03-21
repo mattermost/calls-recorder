@@ -1,6 +1,6 @@
 .PHONY: build
 build:
-	CGO_ENABLED=0 go build main.go
+	CGO_ENABLED=0 go build main.go upload.go
 
 .PHONY: docker
 docker: build
@@ -18,7 +18,7 @@ run:
 
 .PHONY: stop
 stop:
-	docker stop calls-recorder
+	docker stop -t 30 calls-recorder
 
 .PHONY: clean
 clean:

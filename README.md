@@ -6,6 +6,7 @@ This works by running a Docker container that does the following:
 - Spawns a Google Chrome browser running on a [`Xvfb`](https://www.x.org/releases/X11R7.6/doc/man/man1/Xvfb.1.xhtml) display.
 - Logs in the specified user and connects to the call using [`chromedp`](https://github.com/chromedp/chromedp).
 - Grabs the screen and audio using [`ffmpeg`](https://ffmpeg.org) and outputs to a file.
+- Creates a post in the specified channel with the recording file attached.
 
 ## Usage
 

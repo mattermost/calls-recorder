@@ -193,7 +193,8 @@ func main() {
 	log.Printf("ready to record")
 
 	filename := fmt.Sprintf("%s-%s-%s.mp4", teamName, channelID, time.Now().UTC().Format("2006-01-02-15_04_05"))
-	rec, err := runRecorder(filepath.Join("/recs", filename))
+	recPath := filepath.Join("", filename)
+	rec, err := runRecorder(recPath)
 	if err != nil {
 		log.Fatalf("failed to run recorder: %s", err.Error())
 	}
@@ -210,6 +211,10 @@ func main() {
 	log.Printf("%+v", out)
 
 	close(stopCh)
+
+	if err := uploadRecording(cfg, channelID, recPath); err != nil {
+		log.Printf("failed to upload recording: %s", err.Error())
+	}
 
 	wg.Wait()
 
