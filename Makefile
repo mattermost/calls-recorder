@@ -8,6 +8,12 @@ docker: build
 
 .PHONY: run
 run:
+
+ifeq ($(shell test -f .config.env && printf "yes"),yes)
+	@docker run --name calls-recorder \
+		--env-file .config.env \
+		-v calls-recorder-volume:/recs streamer45/calls-recorder
+else
 	@docker run --name calls-recorder \
 		-e MM_SITE_URL=${MM_SITE_URL} \
 		-e MM_USERNAME=${MM_USERNAME} \
@@ -15,10 +21,12 @@ run:
 		-e MM_TEAM_NAME=${MM_TEAM_NAME} \
 		-e MM_CHANNEL_ID=${MM_CHANNEL_ID} \
 		-v calls-recorder-volume:/recs streamer45/calls-recorder
+endif
+
 
 .PHONY: stop
 stop:
-	docker stop -t 30 calls-recorder
+	docker stop -t 300 calls-recorder
 
 .PHONY: clean
 clean:

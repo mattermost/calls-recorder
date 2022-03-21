@@ -50,5 +50,10 @@ func uploadRecording(cfg browserConfig, channelID, recPath string) error {
 		return fmt.Errorf("failed to create post: %w", err)
 	}
 
+	_, err = client.RemoveUserFromChannel(channelID, user.Id)
+	if err != nil {
+		return fmt.Errorf("failed to leave channel: %w", err)
+	}
+
 	return nil
 }
