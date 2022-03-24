@@ -3,17 +3,7 @@ FROM ubuntu:latest
 WORKDIR /workdir
 
 ARG DEBIAN_FRONTEND=noninteractive
-RUN set -ex && apt-get update && apt-get install -y ffmpeg pulseaudio xvfb wget unzip
-
-RUN wget https://go.dev/dl/go1.17.6.linux-amd64.tar.gz && \
-    rm -rf /usr/local/go && tar -C /usr/local -xzf go1.17.6.linux-amd64.tar.gz && \
-    echo 'export PATH=$PATH:/usr/local/go/bin' >> /root/.profile
-
-ENV PATH="${PATH}:/usr/local/go/bin"
-
-COPY go.mod .
-COPY go.sum .
-RUN go mod download
+RUN set -ex && apt-get update && apt-get install -y ffmpeg pulseaudio xvfb wget unzip fonts-emojione
 
 # install chrome
 RUN wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
