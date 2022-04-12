@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -25,6 +26,12 @@ func uploadRecording(cfg browserConfig, channelID, recPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to login: %w", err)
 	}
+	defer func() {
+		_, err := client.RemoveUserFromChannel(channelID, user.Id)
+		if err != nil {
+			log.Printf("failed to leave channel: %s", err.Error())
+		}
+	}()
 
 	us, _, err := client.CreateUpload(&model.UploadSession{
 		UserId:    user.Id,
@@ -48,11 +55,6 @@ func uploadRecording(cfg browserConfig, channelID, recPath string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create post: %w", err)
-	}
-
-	_, err = client.RemoveUserFromChannel(channelID, user.Id)
-	if err != nil {
-		return fmt.Errorf("failed to leave channel: %w", err)
 	}
 
 	return nil
