@@ -124,6 +124,8 @@ func (s *service) startRecording(channelID, teamID string) {
 		fmt.Sprintf("MM_TEAM_NAME=%s", team.Name),
 		fmt.Sprintf("MM_CHANNEL_ID=%s", channelID),
 	}
+
+	containerName := "calls-recorder-" + channelID
 	resp, err := cli.ContainerCreate(context.Background(), &container.Config{
 		Image:   "streamer45/calls-recorder",
 		Tty:     false,
@@ -137,7 +139,7 @@ func (s *service) startRecording(channelID, teamID string) {
 				Type:   "volume",
 			},
 		},
-	}, nil, nil, "calls-recorder")
+	}, nil, nil, containerName)
 	if err != nil {
 		log.Printf("failed to create container: %s", err.Error())
 		return
@@ -160,7 +162,7 @@ func (s *service) stopRecording(channelID, teamID string) {
 	defer cli.Close()
 
 	f := filters.NewArgs()
-	f.Add("name", "calls-recorder")
+	f.Add("name", "calls-recorder-"+channelID)
 	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{
 		All:     true,
 		Filters: f,
