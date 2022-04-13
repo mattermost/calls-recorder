@@ -214,7 +214,7 @@ func (s *service) eventHandler() {
 			}
 
 			if strings.HasSuffix(ev.EventType(), "start") {
-				go s.startRecording(channelID, teamID)
+				s.startRecording(channelID, teamID)
 			} else {
 				go s.stopRecording(channelID, teamID)
 			}

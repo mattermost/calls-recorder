@@ -2,7 +2,8 @@
 build:
 	CGO_ENABLED=0 go build main.go upload.go
 
-service:
+.PHONY: build-service
+build-service:
 	CGO_ENABLE=0 go build service.go
 
 .PHONY: docker
