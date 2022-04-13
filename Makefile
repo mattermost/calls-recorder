@@ -2,6 +2,9 @@
 build:
 	CGO_ENABLED=0 go build main.go upload.go
 
+service:
+	CGO_ENABLE=0 go build service.go
+
 .PHONY: docker
 docker: build
 	docker build -t streamer45/calls-recorder .
