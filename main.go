@@ -183,12 +183,18 @@ func main() {
 
 	stopCh := make(chan struct{})
 	readyCh := make(chan struct{})
+
 	go func() {
 		defer wg.Done()
+		log.Printf("starting up browser")
 		runBrowser(cfg, readyCh, stopCh)
 	}()
 
-	<-readyCh
+	select {
+	case <-readyCh:
+	case <-time.After(30 * time.Second):
+		log.Fatalf("timed out waiting for ready event")
+	}
 
 	log.Printf("ready to record")
 
