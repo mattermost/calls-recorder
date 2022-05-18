@@ -3,8 +3,8 @@ module headless
 go 1.17
 
 require (
-	github.com/chromedp/cdproto v0.0.0-20220124012806-175728ec2004
-	github.com/chromedp/chromedp v0.7.6
+	github.com/chromedp/cdproto v0.0.0-20220515234810-83d799542a04
+	github.com/chromedp/chromedp v0.8.1
 	github.com/docker/docker v20.10.9+incompatible
 	github.com/mattermost/mattermost-load-test-ng v1.4.1-0.20220222081115-d53465499b65
 	github.com/mattermost/mattermost-server/v6 v6.5.0
@@ -59,7 +59,7 @@ require (
 	github.com/wiggin77/srslog v1.0.1 // indirect
 	golang.org/x/crypto v0.0.0-20220208233918-bba287dce954 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
-	golang.org/x/sys v0.0.0-20220207234003-57398862261d // indirect
+	golang.org/x/sys v0.0.0-20220517195934-5e4e11fc645e // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/genproto v0.0.0-20220208230804-65c12eb4c068 // indirect
 	google.golang.org/grpc v1.44.0 // indirect

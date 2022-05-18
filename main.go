@@ -116,10 +116,10 @@ func runBrowser(cfg browserConfig, readyCh, stopCh chan struct{}) {
 	if err := chromedp.Run(ctx,
 		// chromedp.EmulateViewport(1706, 960, chromedp.EmulateScale(1.5)),
 		chromedp.Navigate(cfg.siteURL),
-		chromedp.WaitVisible(`#loginId`),
-		chromedp.SetValue(`#loginId`, cfg.username),
-		chromedp.SetValue(`#loginPassword`, cfg.password),
-		chromedp.Click(`#loginButton`),
+		chromedp.WaitVisible(`#saveSetting`, chromedp.ByID),
+		chromedp.SendKeys(`#input_loginId`, cfg.username, chromedp.ByID),
+		chromedp.SendKeys(`#input_password-input`, cfg.password, chromedp.ByID),
+		chromedp.Click(`#saveSetting`, chromedp.ByID),
 		chromedp.WaitVisible(`#global-header`),
 		chromedp.Navigate(cfg.recURL),
 		chromedp.WaitVisible(`#calls-recording-view`),
@@ -179,7 +179,7 @@ func main() {
 
 	cfg.recURL = fmt.Sprintf("%s/%s/com.mattermost.calls/recording/%s", cfg.siteURL, teamName, channelID)
 
-	fmt.Println(cfg.recURL)
+	fmt.Println(cfg.siteURL)
 
 	stopCh := make(chan struct{})
 	readyCh := make(chan struct{})
