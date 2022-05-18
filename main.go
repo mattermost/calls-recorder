@@ -68,6 +68,7 @@ func runBrowser(cfg browserConfig, readyCh, stopCh chan struct{}) {
 		chromedp.Flag("use-fake-device-for-media-stream", true),
 
 		// custom args
+		chromedp.Flag("incognito", true),
 		chromedp.Flag("kiosk", true),
 		chromedp.Flag("enable-automation", false),
 		chromedp.Flag("autoplay-policy", "no-user-gesture-required"),
