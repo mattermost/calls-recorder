@@ -78,9 +78,9 @@ func runBrowser(cfg browserConfig, readyCh, stopCh chan struct{}) {
 		// chromedp.Flag("force-device-scale-factor", "1.5"),
 
 		// disable security
-		chromedp.Flag("disable-web-security", true),
-		chromedp.Flag("allow-running-insecure-content", true),
-		chromedp.Flag("ignore-certificate-errors", true),
+		// chromedp.Flag("disable-web-security", true),
+		// chromedp.Flag("allow-running-insecure-content", true),
+		// chromedp.Flag("ignore-certificate-errors", true),
 	}
 
 	allocCtx, cancelAllocCtx := chromedp.NewExecAllocator(context.Background(), opts...)
