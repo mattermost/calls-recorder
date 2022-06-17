@@ -88,7 +88,7 @@ func (s *service) startRecording(channelID, teamID string) {
 	defer cli.Close()
 
 	f := filters.NewArgs()
-	f.Add("name", "calls-recorder")
+	f.Add("name", "calls-recorder-"+channelID)
 	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{
 		All:     true,
 		Filters: f,
