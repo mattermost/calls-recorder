@@ -1,3 +1,4 @@
 main
 service
+!service/
 .config.env*
