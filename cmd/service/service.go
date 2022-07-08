@@ -29,9 +29,8 @@ type config struct {
 type service struct {
 	cfg config
 
-	apiClient    *model.Client4
-	wsClient     *websocket.Client
-	dockerClient *docker.Client
+	apiClient *model.Client4
+	wsClient  *websocket.Client
 }
 
 func newService() *service {
@@ -130,10 +129,10 @@ func (s *service) startRecording(channelID, teamID string) {
 		Image:   "streamer45/calls-recorder",
 		Tty:     false,
 		Env:     env,
-		Volumes: map[string]struct{}{"calls-recorder-volume:/recs": struct{}{}},
+		Volumes: map[string]struct{}{"calls-recorder-volume:/recs": {}},
 	}, &container.HostConfig{
 		Mounts: []mount.Mount{
-			mount.Mount{
+			{
 				Target: "/recs",
 				Source: "calls-recorder-volume",
 				Type:   "volume",
@@ -153,7 +152,7 @@ func (s *service) startRecording(channelID, teamID string) {
 	log.Printf("container successfully started")
 }
 
-func (s *service) stopRecording(channelID, teamID string) {
+func (s *service) stopRecording(channelID string) {
 	cli, err := docker.NewClientWithOpts(docker.FromEnv)
 	if err != nil {
 		log.Printf("failed to create docker client: %s", err.Error())
@@ -216,8 +215,16 @@ func (s *service) eventHandler() {
 			if strings.HasSuffix(ev.EventType(), "start") {
 				s.startRecording(channelID, teamID)
 			} else {
-				go s.stopRecording(channelID, teamID)
+				go s.stopRecording(channelID)
 			}
+		case "custom_com.mattermost.calls_call_end":
+			log.Printf("got call end event, will stop the recording")
+			channelID := ev.GetBroadcast().ChannelId
+			if channelID == "" {
+				log.Printf("invalid or missing channelID")
+				continue
+			}
+			go s.stopRecording(channelID)
 		default:
 			continue
 		}

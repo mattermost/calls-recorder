@@ -1,10 +1,10 @@
 .PHONY: build
 build:
-	CGO_ENABLED=0 go build main.go upload.go
+	CGO_ENABLED=0 go build cmd/recorder/main.go cmd/recorder/upload.go
 
 .PHONY: build-service
 build-service:
-	CGO_ENABLE=0 go build service.go
+	CGO_ENABLE=0 go build cmd/service/service.go
 
 .PHONY: docker
 docker: build
