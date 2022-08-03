@@ -83,14 +83,8 @@ func runBrowser(cfg browserConfig, readyCh, stopCh chan struct{}) {
 		// chromedp.Flag("ignore-certificate-errors", true),
 	}
 
-	allocCtx, cancelAllocCtx := chromedp.NewExecAllocator(context.Background(), opts...)
-	ctx, cancelCtx := chromedp.NewContext(allocCtx)
-
-	go func() {
-		<-stopCh
-		cancelCtx()
-		cancelAllocCtx()
-	}()
+	allocCtx, _ := chromedp.NewExecAllocator(context.Background(), opts...)
+	ctx, _ := chromedp.NewContext(allocCtx)
 
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		switch ev := ev.(type) {
@@ -127,6 +121,24 @@ func runBrowser(cfg browserConfig, readyCh, stopCh chan struct{}) {
 	); err != nil {
 		log.Printf(err.Error())
 	}
+
+	<-stopCh
+
+	log.Printf("stop received, shutting down browser")
+
+	if err := chromedp.Run(ctx,
+		chromedp.EvaluateAsDevTools("window.callsClient.disconnect();", nil),
+	); err != nil {
+		log.Printf(err.Error())
+	}
+
+	tctx, cancelCtx := context.WithTimeout(ctx, 10*time.Second)
+	// graceful cancel
+	if err := chromedp.Cancel(tctx); err != nil {
+		log.Printf(err.Error())
+	}
+	cancelCtx()
+	log.Printf("browser was shutdown")
 }
 
 func runRecorder(dst string) (*exec.Cmd, error) {
