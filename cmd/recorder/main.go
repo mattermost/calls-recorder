@@ -111,6 +111,8 @@ func runBrowser(cfg browserConfig, readyCh, stopCh chan struct{}) {
 	if err := chromedp.Run(ctx,
 		// chromedp.EmulateViewport(1706, 960, chromedp.EmulateScale(1.5)),
 		chromedp.Navigate(cfg.siteURL),
+		chromedp.WaitVisible(`.get-app__continue`, chromedp.ByQuery),
+		chromedp.Click(`.get-app__continue`, chromedp.ByQuery),
 		chromedp.WaitVisible(`#saveSetting`, chromedp.ByID),
 		chromedp.SendKeys(`#input_loginId`, cfg.username, chromedp.ByID),
 		chromedp.SendKeys(`#input_password-input`, cfg.password, chromedp.ByID),
