@@ -187,9 +187,12 @@ func (s *service) stopRecording(channelID string) {
 	log.Printf("container successfully stopped")
 }
 
-func (s *service) eventHandler() {
+func (s *service) eventHandler(reconnectCounter *int) {
 	for ev := range s.wsClient.EventChannel {
 		switch ev.EventType() {
+		case "hello":
+			log.Printf("ws connected: %+v", ev.GetData())
+			*reconnectCounter = 0
 		case "custom_com.mattermost.calls_recording_start", "custom_com.mattermost.calls_recording_stop":
 			log.Printf("got stop event")
 			log.Printf("%+v", ev.GetData())
@@ -249,21 +252,19 @@ func (s *service) Start() {
 			AuthToken: client.AuthToken,
 		})
 		if err != nil {
-			log.Printf(err.Error())
-
-			if reconnectCounter == 10 {
-				log.Printf("giving up, exiting")
-				os.Exit(-1)
-			}
-
-			reconnectCounter++
-			time.Sleep(waitTime)
-
-			continue
+			log.Printf("failed to create ws client: %s", err.Error())
+		} else {
+			s.wsClient = ws
+			s.eventHandler(&reconnectCounter)
 		}
-		s.wsClient = ws
 
-		s.eventHandler()
+		if reconnectCounter == 10 {
+			log.Printf("max reconnect attempts reached, exiting")
+			os.Exit(-1)
+		}
+
+		reconnectCounter++
+		time.Sleep(waitTime)
 	}
 }
 
