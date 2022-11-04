@@ -1,4 +1,4 @@
-main
-service
-!service/
+# binaries
+dist/
+
 .config.env*
