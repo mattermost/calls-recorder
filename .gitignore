@@ -2,3 +2,4 @@
 dist/
 
 .config.env*
+*.vim
