@@ -127,26 +127,24 @@ func (rec *Recorder) runBrowser(recURL string) error {
 		return fmt.Errorf("failed to run chromedp: %w", err)
 	}
 
-	go func() {
-		<-rec.stopCh
+	<-rec.stopCh
 
-		log.Printf("stop received, shutting down browser")
+	log.Printf("stop received, shutting down browser")
 
-		if err := chromedp.Run(ctx,
-			chromedp.EvaluateAsDevTools("window.callsClient.disconnect();", nil),
-		); err != nil {
-			log.Printf("failed to run chromedp: %s", err)
-		}
+	if err := chromedp.Run(ctx,
+		chromedp.EvaluateAsDevTools("window.callsClient.disconnect();", nil),
+	); err != nil {
+		log.Printf("failed to run chromedp: %s", err)
+	}
 
-		tctx, cancelCtx := context.WithTimeout(ctx, 10*time.Second)
-		// graceful cancel
-		if err := chromedp.Cancel(tctx); err != nil {
-			log.Printf("failed to cancel context: %s", err)
-		}
-		cancelCtx()
+	tctx, cancelCtx := context.WithTimeout(ctx, 10*time.Second)
+	// graceful cancel
+	if err := chromedp.Cancel(tctx); err != nil {
+		log.Printf("failed to cancel context: %s", err)
+	}
+	cancelCtx()
 
-		close(rec.stoppedCh)
-	}()
+	close(rec.stoppedCh)
 
 	return nil
 }
@@ -207,10 +205,12 @@ func (rec *Recorder) Start() error {
 
 	recURL := fmt.Sprintf("%s/plugins/%s/standalone/recording.html?call_id=%s&token=%s",
 		rec.cfg.SiteURL, pluginID, rec.cfg.CallID, rec.cfg.AuthToken)
-	err = rec.runBrowser(recURL)
-	if err != nil {
-		return fmt.Errorf("failed to run browser: %w", err)
-	}
+
+	go func() {
+		if err := rec.runBrowser(recURL); err != nil {
+			log.Printf("failed to run browser: %s", err)
+		}
+	}()
 
 	select {
 	case <-rec.readyCh:
@@ -254,6 +254,10 @@ func (rec *Recorder) Stop() error {
 
 	if err := rec.uploadRecording(); err != nil {
 		log.Printf("failed to upload recording: %s", err)
+	}
+
+	if err := os.Remove(rec.outPath); err != nil {
+		log.Printf("failed to remove recording: %s", err)
 	}
 
 	return nil
