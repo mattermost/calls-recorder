@@ -26,7 +26,7 @@ term_handler() {
 trap 'kill ${!}; term_handler' SIGTERM
 
 # Run service
-XDG_RUNTIME_DIR=$PATH:~/.cache/xdgr ./main &
+XDG_RUNTIME_DIR=$PATH:~/.cache/xdgr /opt/calls-recorder/bin/calls-recorder &
 pid="$!"
 
 # Wait forever
