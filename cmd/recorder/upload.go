@@ -1,16 +1,17 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 )
 
-func uploadRecording(cfg browserConfig, channelID, recPath string) error {
-	file, err := os.Open(recPath)
+func (rec *Recorder) uploadRecording() error {
+	file, err := os.Open(rec.outPath)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
@@ -21,40 +22,57 @@ func uploadRecording(cfg browserConfig, channelID, recPath string) error {
 		return fmt.Errorf("failed to stat file: %w", err)
 	}
 
-	client := model.NewAPIv4Client(cfg.siteURL)
-	user, _, err := client.Login(cfg.username, cfg.password)
-	if err != nil {
-		return fmt.Errorf("failed to login: %w", err)
-	}
-	defer func() {
-		_, err := client.RemoveUserFromChannel(channelID, user.Id)
-		if err != nil {
-			log.Printf("failed to leave channel: %s", err.Error())
-		}
-	}()
+	client := model.NewAPIv4Client(rec.cfg.SiteURL)
+	client.SetToken(rec.cfg.AuthToken)
+	apiURL := fmt.Sprintf("%s/plugins/%s/bot", client.URL, pluginID)
 
-	us, _, err := client.CreateUpload(&model.UploadSession{
-		UserId:    user.Id,
-		ChannelId: channelID,
-		Filename:  filepath.Base(recPath),
+	us := &model.UploadSession{
+		ChannelId: rec.cfg.CallID,
+		Filename:  filepath.Base(rec.outPath),
 		FileSize:  info.Size(),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create upload session: %w", err)
 	}
 
-	fi, _, err := client.UploadData(us.Id, file)
+	payload, err := json.Marshal(us)
 	if err != nil {
-		return fmt.Errorf("failed to upload data: %w", err)
+		return fmt.Errorf("failed to encode payload: %w", err)
 	}
 
-	_, _, err = client.CreatePost(&model.Post{
-		UserId:    user.Id,
-		ChannelId: channelID,
-		FileIds:   []string{fi.Id},
+	resp, err := client.DoAPIRequestBytes(http.MethodPost, apiURL+"/uploads", payload, "")
+	defer resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("failed to create upload (%d): %w", resp.StatusCode, err)
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&us); err != nil {
+		return fmt.Errorf("failed to decode response body: %w", err)
+	}
+
+	resp, err = client.DoAPIRequestReader(http.MethodPost, apiURL+"/uploads/"+us.Id, file, nil)
+	defer resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("failed to upload data (%d): %w", resp.StatusCode, err)
+	}
+
+	// TODO (MM-48545): handle upload resumption.
+
+	var fi model.FileInfo
+	if err := json.NewDecoder(resp.Body).Decode(&fi); err != nil {
+		return fmt.Errorf("failed to decode response body: %w", err)
+	}
+
+	payload, err = json.Marshal(map[string]string{
+		"file_id":   fi.Id,
+		"thread_id": rec.cfg.ThreadID,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create post: %w", err)
+		return fmt.Errorf("failed to encode payload: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/calls/%s/recordings", apiURL, rec.cfg.CallID)
+	resp, err = client.DoAPIRequestBytes(http.MethodPost, url, payload, "")
+	defer resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("failed to save recording (%d): %w", resp.StatusCode, err)
 	}
 
 	return nil

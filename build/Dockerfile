@@ -23,7 +23,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN set -ex && \
     apt-get update && \
     apt-get install --no-install-recommends -y ffmpeg=7:4.4.2-0ubuntu0.22.04.1 pulseaudio=1:15.99.1+dfsg1-1ubuntu2 \
-      xvfb=2:21.1.3-2ubuntu2.1 wget=1.21.2-2ubuntu1 unzip=6.0-26ubuntu3.1 fonts-emojione=2.2.6+16.10.20160804-0ubuntu2 ca-certificates=20211016 && \
+      xvfb=2:21.1.3-2ubuntu2.3 wget=1.21.2-2ubuntu1 unzip=6.0-26ubuntu3.1 fonts-emojione=2.2.6+16.10.20160804-0ubuntu2 ca-certificates=20211016 && \
     wget --progress=dot:giga https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
     apt-get update && \
     apt-get install --no-install-recommends -y ./google-chrome-stable_current_amd64.deb && \
