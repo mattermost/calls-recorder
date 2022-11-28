@@ -19,6 +19,10 @@ COPY --from=builder /src/dist/calls-recorder-linux-amd64 /opt/calls-recorder/bin
 # Setup system dependencies
 WORKDIR /workdir
 
+# Workaround for Ubuntu 22.04 `apt update` failing when running under Docker < 20.10.9
+# https://stackoverflow.com/questions/71941032/why-i-cannot-run-apt-update-inside-a-fresh-ubuntu22-04
+RUN sed -i -e 's/^APT/# APT/' -e 's/^DPkg/# DPkg/' /etc/apt/apt.conf.d/docker-clean
+
 ARG DEBIAN_FRONTEND=noninteractive
 RUN set -ex && \
     apt-get update && \
