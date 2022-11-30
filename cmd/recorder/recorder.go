@@ -86,6 +86,7 @@ func (rec *Recorder) runBrowser(recURL string) error {
 	}
 	if devMode := os.Getenv("DEV_MODE"); devMode == "true" {
 		opts = append(opts, chromedp.Flag("unsafely-treat-insecure-origin-as-secure", "http://172.17.0.1:8065"))
+		opts = append(opts, chromedp.Flag("unsafely-treat-insecure-origin-as-secure", "http://host.docker.internal:8065"))
 		contextOpts = append(contextOpts, chromedp.WithLogf(log.Printf))
 		contextOpts = append(contextOpts, chromedp.WithDebugf(log.Printf))
 	}
