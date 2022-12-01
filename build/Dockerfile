@@ -1,7 +1,7 @@
 # This dockerfile is used to build Mattermost calls-recorder
 # A multi stage build, with golang used as a builder
 # and ubuntu:22.04 as runner
-ARG GO_IMAGE=golang:1.17@sha256:79138c839452a2a9d767f0bba601bd5f63af4a1d8bb645bf6141bff8f4f33bb8
+ARG GO_IMAGE=golang:1.18@sha256:fa71e1447cb0241324162a6c51297206928d755b16142eceec7b809af55061e5
 # hadolint ignore=DL3006
 FROM ${GO_IMAGE} as builder
 
@@ -28,15 +28,13 @@ RUN set -ex && \
     apt-get update && \
     apt-get install --no-install-recommends -y ffmpeg=7:4.4.2-0ubuntu0.22.04.1 pulseaudio=1:15.99.1+dfsg1-1ubuntu2 \
       xvfb=2:21.1.3-2ubuntu2.3 wget=1.21.2-2ubuntu1 unzip=6.0-26ubuntu3.1 fonts-emojione=2.2.6+16.10.20160804-0ubuntu2 ca-certificates=20211016 && \
-    wget --progress=dot:giga https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
     apt-get update && \
-    apt-get install --no-install-recommends -y ./google-chrome-stable_current_amd64.deb && \
-    wget --progress=dot:giga -N http://chromedriver.storage.googleapis.com/2.46/chromedriver_linux64.zip && \
-    unzip chromedriver_linux64.zip && \
-    chmod +x chromedriver && \
-    mv -f chromedriver /usr/local/bin/chromedriver && \
-    rm chromedriver_linux64.zip && \
-    rm google-chrome-stable_current_amd64.deb && \
+    wget --progress=dot:giga -N https://launchpad.net/~savoury1/+archive/ubuntu/chromium/+files/chromium-chromedriver_107.0.5304.121-0ubuntu0.22.04.1sav0_amd64.deb && \
+    wget --progress=dot:giga -N https://launchpad.net/~savoury1/+archive/ubuntu/chromium/+files/chromium-codecs-ffmpeg-extra_107.0.5304.121-0ubuntu0.22.04.1sav0_amd64.deb && \
+    wget --progress=dot:giga -N https://launchpad.net/~savoury1/+archive/ubuntu/chromium/+files/chromium-browser_107.0.5304.121-0ubuntu0.22.04.1sav0_amd64.deb && \
+    apt-get install --no-install-recommends -y ./chromium-chromedriver_107.0.5304.121-0ubuntu0.22.04.1sav0_amd64.deb \
+    ./chromium-codecs-ffmpeg-extra_107.0.5304.121-0ubuntu0.22.04.1sav0_amd64.deb \
+    ./chromium-browser_107.0.5304.121-0ubuntu0.22.04.1sav0_amd64.deb && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     adduser root pulse-access && \
