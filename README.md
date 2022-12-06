@@ -1,32 +1,53 @@
-# calls-recorder
+# `calls-recorder`
 
 A headless recorder for [Mattermost Calls](https://github.com/mattermost/mattermost-plugin-calls).
 This works by running a Docker container that does the following:
 
-- Spawns a Google Chrome browser running on a [`Xvfb`](https://www.x.org/releases/X11R7.6/doc/man/man1/Xvfb.1.xhtml) display.
-- Logs in the specified user and connects to the call using [`chromedp`](https://github.com/chromedp/chromedp).
+- Spawns a Chromium browser running on a [`Xvfb`](https://www.x.org/releases/X11R7.6/doc/man/man1/Xvfb.1.xhtml) display.
+- Logs a bot user and connects it to the call using [`chromedp`](https://github.com/chromedp/chromedp).
 - Grabs the screen and audio using [`ffmpeg`](https://ffmpeg.org) and outputs to a file.
 - Creates a post in the specified channel with the recording file attached.
 
 ## Usage
 
-### Build docker image
+This program is **not** meant to be run directly (nor manually) other than for development/testing purposes. In fact, this is automatically used by the [`calls-offloader`](https://github.com/mattermost/calls-offloader) service to run recording jobs. Please refer to that project if you are looking to enable call recordings in your Mattermost instance.
 
-```sh
-make docker
+## Manual execution (testing only)
+
+### Fetch the latest image
+
+The latest official docker image can be found at https://hub.docker.com/r/mattermost/calls-recorder.
+
+```
+docker pull mattermost/calls-recorder:latest
 ```
 
-### Start recording
+### Run the container
 
-```sh
-MM_SITE_URL="http://localhost:8065" MM_USERNAME="calls-recorder" MM_PASSWORD="" MM_TEAM_NAME="calls" MM_CHANNEL_ID="he1kbdi6kjb3fpte7og9z1zsyo" make run
+```
+docker run --network=host --name calls-recorder -e "SITE_URL=http://127.0.0.1:8065/" -e "AUTH_TOKEN=ohqd1phqtt8m3gsfg8j5ymymqy" -e "CALL_ID=9c86b3q57fgfpqr8jq3b9yjweh" -e "THREAD_ID=e4pdmi6rqpn7pp9sity9hiza3r" -e "DEV_MODE=true" -v calls-recorder-volume:/recs mattermost/calls-recorder
 ```
 
-### Stop recording
+> **_Note_** 
+>
+> This process requires Mattermost Server >= v7.6 with the latest Mattermost Calls version installed.
 
-```sh
-make stop
-```
+> **_Note_**
+> - `SITE_URL`: The URL pointing to the Mattermost installation.
+> - `AUTH_TOKEN`: The authentication token for the Calls bot.
+> - `CALL_ID`: The channel ID in which the call to record has been started.
+> - `THREAD_ID`: The thread ID the recording file should be posted to.
+
+> **_Note_**
+>
+> The auth token for the bot can be found through this SQL query:
+> ```sql
+> SELECT Token FROM Sessions JOIN Bots ON Sessions.UserId = Bots.UserId AND Bots.OwnerId = 'com.mattermost.calls' ORDER BY Sessions.CreateAt DESC LIMIT 1;
+> ```
+
+### Development
+
+Run `make help` to see available options.
 
 ## Acknowledgements
 
