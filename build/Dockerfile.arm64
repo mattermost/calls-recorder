@@ -1,0 +1,44 @@
+# This dockerfile is used to build Mattermost calls-recorder
+# A multi stage build, with golang used as a builder
+# and ubuntu:22.04 as runner
+ARG GO_IMAGE=golang:1.17@sha256:79138c839452a2a9d767f0bba601bd5f63af4a1d8bb645bf6141bff8f4f33bb8
+# hadolint ignore=DL3006
+FROM ${GO_IMAGE} as builder
+
+#GO_BUILD_PLATFORMS holds the platforms that we will build the docker image against
+ARG GO_BUILD_PLATFORMS=linux-arm64
+
+# Setup directories structure and compile
+COPY . /src
+WORKDIR /src
+RUN make go-build
+
+FROM arm64v8/ubuntu:jammy as runner
+COPY --from=builder /src/dist/calls-recorder-linux-arm64 /opt/calls-recorder/bin/calls-recorder
+
+# Setup system dependencies
+WORKDIR /workdir
+
+# Workaround for Ubuntu 22.04 `apt update` failing when running under Docker < 20.10.9
+# https://stackoverflow.com/questions/71941032/why-i-cannot-run-apt-update-inside-a-fresh-ubuntu22-04
+RUN sed -i -e 's/^APT/# APT/' -e 's/^DPkg/# DPkg/' /etc/apt/apt.conf.d/docker-clean
+
+ARG DEBIAN_FRONTEND=noninteractive
+RUN set -ex && \
+    apt-get update && \
+    apt-get install --no-install-recommends -y ffmpeg pulseaudio \
+      xvfb wget unzip \
+      fonts-emojione ca-certificates && \
+    wget http://launchpadlibrarian.net/632609350/chromium-chromedriver_107.0.5304.87-0ubuntu11.18.04.1_arm64.deb && \
+    wget http://launchpadlibrarian.net/632609348/chromium-browser_107.0.5304.87-0ubuntu11.18.04.1_arm64.deb && \
+    wget http://launchpadlibrarian.net/632609351/chromium-codecs-ffmpeg-extra_107.0.5304.87-0ubuntu11.18.04.1_arm64.deb && \
+    apt-get install --no-install-recommends -y ./chromium-browser_107.0.5304.87-0ubuntu11.18.04.1_arm64.deb ./chromium-codecs-ffmpeg-extra_107.0.5304.87-0ubuntu11.18.04.1_arm64.deb ./chromium-chromedriver_107.0.5304.87-0ubuntu11.18.04.1_arm64.deb && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    adduser root pulse-access && \
+    mkdir -pv ~/.cache/xdgr
+
+# copy binary
+COPY ./build/entrypoint.sh .
+
+ENTRYPOINT ["./entrypoint.sh"]

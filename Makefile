@@ -27,11 +27,18 @@ MAKEFLAGS     += --warn-undefined-variables
 # App Code location
 CONFIG_APP_CODE         += ./cmd/recorder
 
+# Operating system platform
+PLATFORM                += $(shell uname -m)
+
 ## Docker Variables
 # Docker executable
 DOCKER                  := $(shell which docker)
 # Dockerfile's location
 DOCKER_FILE             += ./build/Dockerfile
+ifeq ($(PLATFORM),arm64)
+	DOCKER_FILE           = ./build/Dockerfile.arm64
+endif
+
 # Docker options to inherit for all docker run commands
 DOCKER_OPTS             += --rm -u $$(id -u):$$(id -g) --platform "linux/amd64"
 # Registry to upload images
