@@ -18,10 +18,12 @@ import (
 )
 
 const (
-	pluginID     = "com.mattermost.calls"
-	displayID    = 45
-	readyTimeout = 15 * time.Second
-	stopTimeout  = 10 * time.Second
+	pluginID                   = "com.mattermost.calls"
+	displayID                  = 45
+	readyTimeout               = 15 * time.Second
+	stopTimeout                = 10 * time.Second
+	maxUploadRetryAttempts     = 5
+	uploadRetryAttemptWaitTime = 5 * time.Second
 )
 
 type Recorder struct {
@@ -254,10 +256,23 @@ func (rec *Recorder) Stop() error {
 		log.Printf("failed to stop display process: %s", err)
 	}
 
-	// TODO (MM-48546): implement retry logic.
+	// TODO (MM-48546): implement better retry logic.
+	var attempt int
+	for {
+		err := rec.uploadRecording()
+		if err == nil {
+			log.Printf("recording uploaded successfully")
+			break
+		}
 
-	if err := rec.uploadRecording(); err != nil {
+		if attempt == maxUploadRetryAttempts {
+			return fmt.Errorf("max retry attempts reached, exiting")
+		}
+
+		attempt++
 		log.Printf("failed to upload recording: %s", err)
+		log.Printf("retrying in %s", uploadRetryAttemptWaitTime)
+		time.Sleep(uploadRetryAttemptWaitTime)
 	}
 
 	if err := os.Remove(rec.outPath); err != nil {
