@@ -156,7 +156,7 @@ func (rec *Recorder) runBrowser(recURL string) error {
 }
 
 func (rec *Recorder) runTranscoder(dst string) error {
-	args := fmt.Sprintf(`-y -thread_queue_size 1024 -f pulse -i default -r %d -thread_queue_size 1024 -f x11grab -draw_mouse 0 -s %dx%d -i :%d -c:v h264 -preset fast -vf format=yuv420p -b:v %dk -b:a %dk -movflags +faststart %s`, rec.cfg.FrameRate, rec.cfg.Width, rec.cfg.Height, displayID, rec.cfg.VideoRate, rec.cfg.AudioRate, dst)
+	args := fmt.Sprintf(`-y -thread_queue_size 1024 -f alsa -i default -r %d -thread_queue_size 1024 -f x11grab -draw_mouse 0 -s %dx%d -i :%d -c:v h264 -preset fast -vf format=yuv420p -b:v %dk -b:a %dk -movflags +faststart %s`, rec.cfg.FrameRate, rec.cfg.Width, rec.cfg.Height, displayID, rec.cfg.VideoRate, rec.cfg.AudioRate, dst)
 	log.Printf("running transcoder: %q", args)
 	cmd := exec.Command("ffmpeg", strings.Split(args, " ")...)
 
