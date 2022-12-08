@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 )
@@ -46,6 +47,9 @@ func (rec *Recorder) uploadRecording() error {
 	if err := json.NewDecoder(resp.Body).Decode(&us); err != nil {
 		return fmt.Errorf("failed to decode response body: %w", err)
 	}
+
+	// Bad hack to prevent read after write issue (MM-48946)
+	time.Sleep(2 * time.Second)
 
 	resp, err = client.DoAPIRequestReader(http.MethodPost, apiURL+"/uploads/"+us.Id, file, nil)
 	defer resp.Body.Close()
