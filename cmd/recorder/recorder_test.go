@@ -16,9 +16,9 @@ func TestNewRecorder(t *testing.T) {
 	t.Run("valid config", func(t *testing.T) {
 		cfg := RecorderConfig{
 			SiteURL:   "http://localhost:8065",
-			CallID:    "test-call-id",
-			ThreadID:  "test-thread-id",
-			AuthToken: "test-auth-token",
+			CallID:    "8w8jorhr7j83uqr6y1st894hqe",
+			ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
+			AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
 		}
 		cfg.SetDefaults()
 		rec, err := NewRecorder(cfg)
