@@ -27,9 +27,9 @@ func TestUploadRecording(t *testing.T) {
 
 	cfg := RecorderConfig{
 		SiteURL:   ts.URL,
-		CallID:    "test-call-id",
-		ThreadID:  "test-thread-id",
-		AuthToken: "test-auth-token",
+		CallID:    "8w8jorhr7j83uqr6y1st894hqe",
+		ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
+		AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
 	}
 	cfg.SetDefaults()
 	rec, err := NewRecorder(cfg)
@@ -106,7 +106,7 @@ func TestUploadRecording(t *testing.T) {
 				return false
 			},
 			func(w http.ResponseWriter, r *http.Request) bool {
-				if r.URL.Path == "/plugins/com.mattermost.calls/bot/calls/test-call-id/recordings" && r.Method == http.MethodPost {
+				if r.URL.Path == "/plugins/com.mattermost.calls/bot/calls/8w8jorhr7j83uqr6y1st894hqe/recordings" && r.Method == http.MethodPost {
 					w.WriteHeader(400)
 					fmt.Fprintln(w, `{"message": "server error"}`)
 					return true
@@ -122,7 +122,7 @@ func TestUploadRecording(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		middlewares = middlewares[:len(middlewares)-1]
 		middlewares = append(middlewares, func(w http.ResponseWriter, r *http.Request) bool {
-			if r.URL.Path == "/plugins/com.mattermost.calls/bot/calls/test-call-id/recordings" && r.Method == http.MethodPost {
+			if r.URL.Path == "/plugins/com.mattermost.calls/bot/calls/8w8jorhr7j83uqr6y1st894hqe/recordings" && r.Method == http.MethodPost {
 				w.WriteHeader(200)
 				return true
 			}
