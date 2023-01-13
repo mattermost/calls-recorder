@@ -44,11 +44,9 @@ func (rec *Recorder) runBrowser(recURL string) error {
 		chromedp.NoFirstRun,
 		chromedp.NoDefaultBrowserCheck,
 		chromedp.DisableGPU,
-		chromedp.NoSandbox,
 
 		// puppeteer default behavior
 		chromedp.Flag("disable-infobars", true),
-		chromedp.Flag("enable-automation", true),
 		chromedp.Flag("disable-background-networking", true),
 		chromedp.Flag("enable-features", "NetworkService,NetworkServiceInProcess"),
 		chromedp.Flag("disable-background-timer-throttling", true),
