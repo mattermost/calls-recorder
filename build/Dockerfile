@@ -14,15 +14,11 @@ RUN sed -i -e 's/^APT/# APT/' -e 's/^DPkg/# DPkg/' /etc/apt/apt.conf.d/docker-cl
 
 ARG CHROMIUM_VERSION=109.0.5414.74-0
 ARG DEBIAN_FRONTEND=noninteractive
+COPY ./build/pkgs_list .
+# hadolint ignore=DL3008,SC2046
 RUN set -ex && \
     apt-get update && \
-    apt-get install --no-install-recommends -y \
-      ffmpeg=7:4.4.2-0ubuntu0.22.04.1 \
-      pulseaudio=1:15.99.1+dfsg1-1ubuntu2 \
-      xvfb=2:21.1.3* wget=1.21.2-2ubuntu1 \
-      unzip=6.0-26ubuntu3.1 \
-      fonts-emojione=2.2.6+16.10.20160804-0ubuntu2 \
-      ca-certificates=20211016 && \
+    apt-get install --no-install-recommends -y $(cat pkgs_list) && \
     apt-get update && \
     wget --progress=dot:giga -N \
       -O chromium-chromedriver.deb \

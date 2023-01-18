@@ -352,6 +352,10 @@ else
 endif
 	@$(OK) Generating github-release http://github.com/$(GITHUB_ORG)/$(GITHUB_REPO)/releases/tag/$(APP_VERSION) ...
 
+.PHONY: go-pinned-packages
+go-pinned-packages: ## to update pinned packages list for the Ubuntu based Docker image
+	go run ./build/generator.go
+
 .PHONY: clean
 clean: ## to clean-up
 	@$(INFO) cleaning /${GO_OUT_BIN_DIR} folder...
