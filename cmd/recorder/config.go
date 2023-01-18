@@ -2,9 +2,14 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"os"
+	"regexp"
 	"strconv"
+	"strings"
 )
+
+var idRE = regexp.MustCompile(`^[a-z0-9]{26}$`)
 
 type AVFormat string
 
@@ -57,15 +62,34 @@ func (cfg RecorderConfig) IsValid() error {
 	if cfg.SiteURL == "" {
 		return fmt.Errorf("SiteURL cannot be empty")
 	}
+
+	u, err := url.Parse(cfg.SiteURL)
+	if err != nil {
+		return fmt.Errorf("SiteURL parsing failed: %w", err)
+	} else if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("SiteURL parsing failed: invalid scheme %q", u.Scheme)
+	} else if u.Path != "" {
+		return fmt.Errorf("SiteURL parsing failed: invalid path %q", u.Path)
+	}
+
 	if cfg.CallID == "" {
 		return fmt.Errorf("CallID cannot be empty")
+	} else if !idRE.MatchString(cfg.CallID) {
+		return fmt.Errorf("CallID parsing failed")
 	}
+
 	if cfg.ThreadID == "" {
 		return fmt.Errorf("ThreadID cannot be empty")
+	} else if !idRE.MatchString(cfg.ThreadID) {
+		return fmt.Errorf("ThreadID parsing failed")
 	}
+
 	if cfg.AuthToken == "" {
 		return fmt.Errorf("AuthToken cannot be empty")
+	} else if !idRE.MatchString(cfg.AuthToken) {
+		return fmt.Errorf("AuthToken parsing failed")
 	}
+
 	if cfg.Width < VideoWidthMin || cfg.Width > VideoWidthMax {
 		return fmt.Errorf("Width value is not valid")
 	}
@@ -116,7 +140,7 @@ func (cfg *RecorderConfig) SetDefaults() {
 
 func loadConfig() (RecorderConfig, error) {
 	var cfg RecorderConfig
-	cfg.SiteURL = os.Getenv("SITE_URL")
+	cfg.SiteURL = strings.TrimSuffix(os.Getenv("SITE_URL"), "/")
 	cfg.CallID = os.Getenv("CALL_ID")
 	cfg.ThreadID = os.Getenv("THREAD_ID")
 	cfg.AuthToken = os.Getenv("AUTH_TOKEN")
