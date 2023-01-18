@@ -19,6 +19,13 @@ func TestConfigIsValid(t *testing.T) {
 			expectedError: "config cannot be empty",
 		},
 		{
+			name: "invalid SiteURL schema",
+			cfg: RecorderConfig{
+				SiteURL: "invalid://localhost",
+			},
+			expectedError: "SiteURL parsing failed: invalid scheme \"invalid\"",
+		},
+		{
 			name: "missing CallID",
 			cfg: RecorderConfig{
 				SiteURL: "http://localhost:8065",
@@ -28,8 +35,9 @@ func TestConfigIsValid(t *testing.T) {
 		{
 			name: "missing ThreadID",
 			cfg: RecorderConfig{
-				SiteURL: "http://localhost:8065",
-				CallID:  "test-call-id",
+				SiteURL:   "http://localhost:8065",
+				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
+				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
 			},
 			expectedError: "ThreadID cannot be empty",
 		},
@@ -37,8 +45,8 @@ func TestConfigIsValid(t *testing.T) {
 			name: "missing AuthToken",
 			cfg: RecorderConfig{
 				SiteURL:  "http://localhost:8065",
-				CallID:   "test-call-id",
-				ThreadID: "test-thread-id",
+				CallID:   "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID: "udzdsg7dwidbzcidx5khrf8nee",
 			},
 			expectedError: "AuthToken cannot be empty",
 		},
@@ -46,9 +54,9 @@ func TestConfigIsValid(t *testing.T) {
 			name: "invalid Width",
 			cfg: RecorderConfig{
 				SiteURL:   "http://localhost:8065",
-				CallID:    "test-call-id",
-				ThreadID:  "test-thread-id",
-				AuthToken: "test-auth-token",
+				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
+				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
 			},
 			expectedError: "Width value is not valid",
 		},
@@ -56,9 +64,9 @@ func TestConfigIsValid(t *testing.T) {
 			name: "invalid Height",
 			cfg: RecorderConfig{
 				SiteURL:   "http://localhost:8065",
-				CallID:    "test-call-id",
-				ThreadID:  "test-thread-id",
-				AuthToken: "test-auth-token",
+				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
+				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
 				Width:     1280,
 			},
 			expectedError: "Height value is not valid",
@@ -67,9 +75,9 @@ func TestConfigIsValid(t *testing.T) {
 			name: "invalid VideoRate",
 			cfg: RecorderConfig{
 				SiteURL:   "http://localhost:8065",
-				CallID:    "test-call-id",
-				ThreadID:  "test-thread-id",
-				AuthToken: "test-auth-token",
+				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
+				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
 				Width:     1280,
 				Height:    720,
 			},
@@ -79,9 +87,9 @@ func TestConfigIsValid(t *testing.T) {
 			name: "invalid AudioRate",
 			cfg: RecorderConfig{
 				SiteURL:   "http://localhost:8065",
-				CallID:    "test-call-id",
-				ThreadID:  "test-thread-id",
-				AuthToken: "test-auth-token",
+				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
+				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
 				Width:     1280,
 				Height:    720,
 				VideoRate: 1000,
@@ -92,9 +100,9 @@ func TestConfigIsValid(t *testing.T) {
 			name: "invalid FrameRate",
 			cfg: RecorderConfig{
 				SiteURL:   "http://localhost:8065",
-				CallID:    "test-call-id",
-				ThreadID:  "test-thread-id",
-				AuthToken: "test-auth-token",
+				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
+				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
 				Width:     1280,
 				Height:    720,
 				VideoRate: 1000,
@@ -106,9 +114,9 @@ func TestConfigIsValid(t *testing.T) {
 			name: "invalid format",
 			cfg: RecorderConfig{
 				SiteURL:   "http://localhost:8065",
-				CallID:    "test-call-id",
-				ThreadID:  "test-thread-id",
-				AuthToken: "test-auth-token",
+				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
+				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
 				Width:     1280,
 				Height:    720,
 				VideoRate: 1000,
@@ -121,9 +129,9 @@ func TestConfigIsValid(t *testing.T) {
 			name: "valid config",
 			cfg: RecorderConfig{
 				SiteURL:      "http://localhost:8065",
-				CallID:       "test-call-id",
-				ThreadID:     "test-thread-id",
-				AuthToken:    "test-auth-token",
+				CallID:       "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID:     "udzdsg7dwidbzcidx5khrf8nee",
+				AuthToken:    "qj75unbsef83ik9p7ueypb6iyw",
 				Width:        1280,
 				Height:       720,
 				VideoRate:    1000,
@@ -219,11 +227,11 @@ func TestLoadConfig(t *testing.T) {
 	t.Run("valid config", func(t *testing.T) {
 		os.Setenv("SITE_URL", "http://localhost:8065/")
 		defer os.Unsetenv("SITE_URL")
-		os.Setenv("CALL_ID", "test-call-id")
+		os.Setenv("CALL_ID", "8w8jorhr7j83uqr6y1st894hqe")
 		defer os.Unsetenv("CALL_ID")
-		os.Setenv("THREAD_ID", "test-thread-id")
+		os.Setenv("THREAD_ID", "udzdsg7dwidbzcidx5khrf8nee")
 		defer os.Unsetenv("THREAD_ID")
-		os.Setenv("AUTH_TOKEN", "test-auth-token")
+		os.Setenv("AUTH_TOKEN", "qj75unbsef83ik9p7ueypb6iyw")
 		defer os.Unsetenv("AUTH_TOKEN")
 		os.Setenv("WIDTH", "1920")
 		defer os.Unsetenv("WIDTH")
@@ -239,10 +247,10 @@ func TestLoadConfig(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, cfg)
 		require.Equal(t, RecorderConfig{
-			SiteURL:   "http://localhost:8065/",
-			CallID:    "test-call-id",
-			ThreadID:  "test-thread-id",
-			AuthToken: "test-auth-token",
+			SiteURL:   "http://localhost:8065",
+			CallID:    "8w8jorhr7j83uqr6y1st894hqe",
+			ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
+			AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
 			Width:     1920,
 			Height:    1080,
 			VideoRate: 1000,

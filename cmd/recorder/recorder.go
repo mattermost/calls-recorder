@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -207,8 +208,15 @@ func (rec *Recorder) Start() error {
 		return fmt.Errorf("failed to run display server: %s", err)
 	}
 
-	recURL := fmt.Sprintf("%s/plugins/%s/standalone/recording.html?call_id=%s&token=%s",
-		rec.cfg.SiteURL, pluginID, rec.cfg.CallID, rec.cfg.AuthToken)
+	data, err := json.Marshal(map[string]string{
+		"token": rec.cfg.AuthToken,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to marshal data: %s", err)
+	}
+
+	recURL := fmt.Sprintf("%s/plugins/%s/standalone/recording.html?call_id=%s#%s",
+		rec.cfg.SiteURL, pluginID, rec.cfg.CallID, base64.URLEncoding.EncodeToString(data))
 
 	go func() {
 		if err := rec.runBrowser(recURL); err != nil {
