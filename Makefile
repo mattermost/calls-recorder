@@ -35,9 +35,6 @@ PLATFORM                += $(shell uname -m)
 DOCKER                  := $(shell which docker)
 # Dockerfile's location
 DOCKER_FILE             += ./build/Dockerfile
-ifeq ($(PLATFORM),arm64)
-	DOCKER_FILE           = ./build/Dockerfile.arm64
-endif
 
 # Docker options to inherit for all docker run commands
 DOCKER_OPTS             += --rm -u $$(id -u):$$(id -g) --platform "linux/amd64"
@@ -147,10 +144,25 @@ lint: go-lint docker-lint ## to lint
 test: go-test ## to test
 
 .PHONY: docker-build
+CHROMIUM_VERSION=109.0.5414.74-0
+ifeq ($(PLATFORM),arm64)
+  CHROMEDRIVER="http://launchpadlibrarian.net/646045586/chromium-chromedriver_109.0.5414.74-0ubuntu0.18.04.14_arm64.deb"
+  CHROME="http://launchpadlibrarian.net/646045585/chromium-browser_109.0.5414.74-0ubuntu0.18.04.14_arm64.deb"
+  CODECS="http://launchpadlibrarian.net/646045587/chromium-codecs-ffmpeg-extra_109.0.5414.74-0ubuntu0.18.04.14_arm64.deb"
+else
+  CHROMEDRIVER="https://launchpad.net/~savoury1/+archive/ubuntu/chromium/+files/chromium-chromedriver_${CHROMIUM_VERSION}ubuntu0.22.04.1sav1_amd64.deb"
+  CHROME="https://launchpad.net/~savoury1/+archive/ubuntu/chromium/+files/chromium-codecs-ffmpeg-extra_${CHROMIUM_VERSION}ubuntu0.22.04.1sav1_amd64.deb"
+  CODECS="https://launchpad.net/~savoury1/+archive/ubuntu/chromium/+files/chromium-browser_${CHROMIUM_VERSION}ubuntu0.22.04.1sav1_amd64.deb"
+endif
+
 docker-build: ## to build the docker image
 	@$(INFO) Performing Docker build ${APP_NAME}:${APP_VERSION}
 	$(AT)$(DOCKER) build \
 	--build-arg GO_IMAGE=${DOCKER_IMAGE_GO} \
+	--build-arg PLATFORM=${PLATFORM} \
+	--build-arg CHROMEDRIVER=${CHROMEDRIVER} \
+	--build-arg CHROME=${CHROME} \
+	--build-arg CODECS=${CODECS} \
 	-f ${DOCKER_FILE} . \
 	-t ${APP_NAME}:${APP_VERSION} || ${FAIL}
 	@$(OK) Performing Docker build ${APP_NAME}:${APP_VERSION}
