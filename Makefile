@@ -27,8 +27,8 @@ MAKEFLAGS     += --warn-undefined-variables
 # App Code location
 CONFIG_APP_CODE         += ./cmd/recorder
 
-# Operating system platform
-PLATFORM                += $(shell uname -m)
+# Operating system arch
+ARCH                    ?= $(shell go version | awk '{print substr($$4,index($$4,"/")+1)}')
 
 ## Docker Variables
 # Docker executable
@@ -50,6 +50,11 @@ DOCKER_IMAGE_GOLINT     += "golangci/golangci-lint:v1.50.1@sha256:94388e00f07c64
 DOCKER_IMAGE_DOCKERLINT += "hadolint/hadolint:v2.9.2@sha256:d355bd7df747a0f124f3b5e7b21e9dafd0cb19732a276f901f0fdee243ec1f3b"
 DOCKER_IMAGE_COSIGN     += "bitnami/cosign:1.8.0@sha256:8c2c61c546258fffff18b47bb82a65af6142007306b737129a7bd5429d53629a"
 DOCKER_IMAGE_GH_CLI     += "registry.internal.mattermost.com/images/build-ci:3.16.0@sha256:f6a229a9ababef3c483f237805ee4c3dbfb63f5de4fbbf58f4c4b6ed8fcd34b6"
+
+DOCKER_IMAGE_RUNNER     := "debian:sid-20230109@sha256:c7caaec69b8b2d56332fb0860252e7865f6900f8031c845ae8f5f16045c619bd"
+ifeq ($(ARCH),arm64)
+	DOCKER_IMAGE_RUNNER="arm64v8/debian:sid-20230109@sha256:518e58d25b6ec2ed341247fbcd0c1cd992de98b8323568164a588ec34f588aec"
+endif
 
 ## Cosign Variables
 # The public key
@@ -144,25 +149,13 @@ lint: go-lint docker-lint ## to lint
 test: go-test ## to test
 
 .PHONY: docker-build
-CHROMIUM_VERSION=109.0.5414.74-0
-ifeq ($(PLATFORM),arm64)
-  CHROMEDRIVER="http://launchpadlibrarian.net/646045586/chromium-chromedriver_109.0.5414.74-0ubuntu0.18.04.14_arm64.deb"
-  CHROME="http://launchpadlibrarian.net/646045585/chromium-browser_109.0.5414.74-0ubuntu0.18.04.14_arm64.deb"
-  CODECS="http://launchpadlibrarian.net/646045587/chromium-codecs-ffmpeg-extra_109.0.5414.74-0ubuntu0.18.04.14_arm64.deb"
-else
-  CHROMEDRIVER="https://launchpad.net/~savoury1/+archive/ubuntu/chromium/+files/chromium-chromedriver_${CHROMIUM_VERSION}ubuntu0.22.04.1sav1_amd64.deb"
-  CHROME="https://launchpad.net/~savoury1/+archive/ubuntu/chromium/+files/chromium-codecs-ffmpeg-extra_${CHROMIUM_VERSION}ubuntu0.22.04.1sav1_amd64.deb"
-  CODECS="https://launchpad.net/~savoury1/+archive/ubuntu/chromium/+files/chromium-browser_${CHROMIUM_VERSION}ubuntu0.22.04.1sav1_amd64.deb"
-endif
 
 docker-build: ## to build the docker image
-	@$(INFO) Performing Docker build ${APP_NAME}:${APP_VERSION}
+	@$(INFO) Performing Docker build ${APP_NAME}:${APP_VERSION} for ${ARCH}
 	$(AT)$(DOCKER) build \
 	--build-arg GO_IMAGE=${DOCKER_IMAGE_GO} \
-	--build-arg PLATFORM=${PLATFORM} \
-	--build-arg CHROMEDRIVER=${CHROMEDRIVER} \
-	--build-arg CHROME=${CHROME} \
-	--build-arg CODECS=${CODECS} \
+	--build-arg ARCH=${ARCH} \
+	--build-arg RUNNER_IMAGE=${DOCKER_IMAGE_RUNNER} \
 	-f ${DOCKER_FILE} . \
 	-t ${APP_NAME}:${APP_VERSION} || ${FAIL}
 	@$(OK) Performing Docker build ${APP_NAME}:${APP_VERSION}

@@ -2,20 +2,19 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 )
 
 const (
-	launchpadAPIBaseURL = "https://api.launchpad.net/1.0"
-	distroName          = "ubuntu"
-	distroVersion       = "jammy"
-	distroArch          = "amd64"
+	apiBaseURL   = "https://packages.debian.org/search"
+	suiteVersion = "sid"
 
 	pkgsListPath = "./build/pkgs_list"
 
@@ -27,27 +26,25 @@ type Package struct {
 	Version string
 }
 
-func GetPublishedPackages(c *http.Client, names []string) ([]Package, error) {
+func GetPublishedPackages(c *http.Client, names []string, arch string) ([]Package, error) {
 	var pkgs []Package
 
 	for _, pkgName := range names {
 		ctx, cancelFn := context.WithTimeout(context.Background(), requestTimeout)
 		defer cancelFn()
 
-		url := fmt.Sprintf("%s/%s/+archive/primary", launchpadAPIBaseURL, distroName)
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiBaseURL, nil)
 		if err != nil {
 			return nil, fmt.Errorf("request creation: %w", err)
 		}
 
 		q := req.URL.Query()
-		q.Add("ws.op", "getPublishedBinaries")
-		q.Add("binary_name", pkgName)
-		q.Add("exact_match", "true")
-		q.Add("distro_arch_series", fmt.Sprintf("%s/%s/%s/%s", launchpadAPIBaseURL, distroName, distroVersion, distroArch))
-		q.Add("status", "Published")
-		q.Add("order_by_date", "true")
+		q.Add("keywords", pkgName)
+		q.Add("searchon", "names")
+		q.Add("exact", "1")
+		q.Add("suite", suiteVersion)
+		q.Add("section", "all")
+		q.Add("arch", arch)
 		req.URL.RawQuery = q.Encode()
 
 		resp, err := c.Do(req)
@@ -55,47 +52,40 @@ func GetPublishedPackages(c *http.Client, names []string) ([]Package, error) {
 			return nil, fmt.Errorf("request failed: %w", err)
 		}
 
-		respData := map[string]any{}
-		if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
-			return nil, fmt.Errorf("failed to decode response: %w", err)
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read response body: %w", err)
 		}
 
-		entries, ok := respData["entries"].([]any)
-		if !ok {
-			return nil, fmt.Errorf("failed to parse response")
+		var version string
+		suffixes := []string{fmt.Sprintf(": %s", arch), ": all"}
+		lines := strings.Split(string(data), "\n")
+		for _, line := range lines {
+			if strings.HasSuffix(line, suffixes[0]) || strings.HasSuffix(line, suffixes[1]) {
+				line = strings.TrimSpace(line)
+				version = strings.TrimPrefix(line, "<br>")
+				version = strings.TrimSuffix(version, suffixes[0])
+				version = strings.TrimSuffix(version, suffixes[1])
+				break
+			}
 		}
 
-		if len(entries) == 0 {
-			break
+		if version == "" || strings.Contains(version, " ") {
+			return nil, fmt.Errorf("failed to parse package version for %s", pkgName)
 		}
 
-		entry, ok := entries[0].(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("failed to parse entry")
-		}
+		log.Printf("found %s=%s\n", pkgName, version)
 
-		name, ok := entry["binary_package_name"].(string)
-		if !ok {
-			return nil, fmt.Errorf("failed to parse package name")
-		}
-
-		version, ok := entry["binary_package_version"].(string)
-		if !ok {
-			return nil, fmt.Errorf("failed to parse package version")
-		}
-
-		log.Printf("found %s=%s\n", name, version)
-
-		pkgs = append(pkgs, Package{Name: name, Version: version})
+		pkgs = append(pkgs, Package{Name: pkgName, Version: version})
 	}
 
 	return pkgs, nil
 }
 
-func GenPinnedPackages(pkgsNames []string) error {
+func GenPinnedPackages(pkgsNames []string, arch string) error {
 	c := &http.Client{}
 
-	pkgs, err := GetPublishedPackages(c, pkgsNames)
+	pkgs, err := GetPublishedPackages(c, pkgsNames, arch)
 	if err != nil {
 		return fmt.Errorf("failed to get packages: %w", err)
 	}
@@ -115,7 +105,7 @@ func GenPinnedPackages(pkgsNames []string) error {
 
 func parsePkgsList(data string) []string {
 	var pkgs []string
-	list := strings.Split(data, "\n")
+	list := strings.Split(strings.TrimSuffix(data, "\n"), "\n")
 	for _, el := range list {
 		name, _, _ := strings.Cut(el, "=")
 		pkgs = append(pkgs, name)
@@ -129,7 +119,9 @@ func main() {
 		log.Fatalf("failed to read packages file: %s", err)
 	}
 
-	if err := GenPinnedPackages(parsePkgsList(string(data))); err != nil {
+	log.Printf("arch=%s", runtime.GOARCH)
+
+	if err := GenPinnedPackages(parsePkgsList(string(data)), runtime.GOARCH); err != nil {
 		log.Fatalf("failed to generate pinned packages: %s", err)
 	}
 
