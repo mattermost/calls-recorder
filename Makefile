@@ -359,7 +359,7 @@ endif
 
 .PHONY: go-pinned-packages
 go-pinned-packages: ## to update pinned packages list for the Ubuntu based Docker image
-	go run ./build/generator.go
+	cd build && go run generator.go; cd ..
 
 .PHONY: clean
 clean: ## to clean-up

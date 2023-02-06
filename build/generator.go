@@ -1,22 +1,29 @@
 package main
 
 import (
+	"bufio"
+	"compress/gzip"
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
+
+	"pault.ag/go/debian/control"
 )
 
 const (
-	apiBaseURL   = "https://packages.debian.org/search"
+	baseURL      = "http://ftp.debian.org/debian/dists"
 	suiteVersion = "sid"
 
-	pkgsListPath = "./build/pkgs_list"
+	pkgsListPath = "./pkgs_list"
 
 	requestTimeout = 5 * time.Second
 )
@@ -29,54 +36,92 @@ type Package struct {
 func GetPublishedPackages(c *http.Client, names []string, arch string) ([]Package, error) {
 	var pkgs []Package
 
-	for _, pkgName := range names {
-		ctx, cancelFn := context.WithTimeout(context.Background(), requestTimeout)
-		defer cancelFn()
+	ctx, cancelFn := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancelFn()
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiBaseURL, nil)
-		if err != nil {
-			return nil, fmt.Errorf("request creation: %w", err)
+	releaseFileURL := fmt.Sprintf("%s/%s/InRelease", baseURL, suiteVersion)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, releaseFileURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request creation: %w", err)
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var controlFileHash string
+	var controlFileSize int64
+	controlFilePath := fmt.Sprintf("main/binary-%s/Packages.gz", arch)
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.Contains(line, controlFilePath) {
+			fields := strings.Fields(line)
+			if len(fields) > 1 {
+				controlFileHash = fields[0]
+				controlFileSize, _ = strconv.ParseInt(fields[1], 10, 64)
+			}
+			break
 		}
+	}
 
-		q := req.URL.Query()
-		q.Add("keywords", pkgName)
-		q.Add("searchon", "names")
-		q.Add("exact", "1")
-		q.Add("suite", suiteVersion)
-		q.Add("section", "all")
-		q.Add("arch", arch)
-		req.URL.RawQuery = q.Encode()
+	if controlFileHash == "" {
+		return nil, fmt.Errorf("control file hash sum not found")
+	}
 
-		resp, err := c.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("request failed: %w", err)
-		}
+	if controlFileSize <= 0 {
+		return nil, fmt.Errorf("control file size not found")
+	}
 
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read response body: %w", err)
-		}
+	controlFileURL := fmt.Sprintf("%s/%s/%s", baseURL, suiteVersion, controlFilePath)
+	req, err = http.NewRequestWithContext(ctx, http.MethodGet, controlFileURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request creation: %w", err)
+	}
 
-		var version string
-		suffixes := []string{fmt.Sprintf(": %s", arch), ": all"}
-		lines := strings.Split(string(data), "\n")
-		for _, line := range lines {
-			if strings.HasSuffix(line, suffixes[0]) || strings.HasSuffix(line, suffixes[1]) {
-				line = strings.TrimSpace(line)
-				version = strings.TrimPrefix(line, "<br>")
-				version = strings.TrimSuffix(version, suffixes[0])
-				version = strings.TrimSuffix(version, suffixes[1])
+	resp, err = c.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.ContentLength != controlFileSize {
+		return nil, fmt.Errorf("control file response content length mismatch: %d vs %d", resp.ContentLength, controlFileSize)
+	}
+
+	h := md5.New()
+	dataRd := io.TeeReader(io.LimitReader(resp.Body, controlFileSize), h)
+
+	gzipRd, err := gzip.NewReader(dataRd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+	}
+
+	ctrl, err := control.ParseControl(bufio.NewReader(gzipRd), "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse control file data: %w", err)
+	}
+
+	actualHash := hex.EncodeToString(h.Sum(nil))
+	if controlFileHash != actualHash {
+		return nil, fmt.Errorf("control file hash mismatch: %q vs %q", controlFileHash, actualHash)
+	}
+
+	for _, binary := range ctrl.Binaries {
+		for _, pkgName := range names {
+			if binary.Package == pkgName {
+				version := binary.Values["Version"]
+				log.Printf("found %s=%s\n", pkgName, version)
+				pkgs = append(pkgs, Package{Name: pkgName, Version: version})
 				break
 			}
 		}
-
-		if version == "" || strings.Contains(version, " ") {
-			return nil, fmt.Errorf("failed to parse package version for %s", pkgName)
-		}
-
-		log.Printf("found %s=%s\n", pkgName, version)
-
-		pkgs = append(pkgs, Package{Name: pkgName, Version: version})
 	}
 
 	return pkgs, nil
