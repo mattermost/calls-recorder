@@ -1,23 +1,29 @@
 package main
 
 import (
+	"bufio"
+	"compress/gzip"
 	"context"
-	"encoding/json"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"runtime"
+	"strconv"
 	"strings"
 	"time"
+
+	"pault.ag/go/debian/control"
 )
 
 const (
-	launchpadAPIBaseURL = "https://api.launchpad.net/1.0"
-	distroName          = "ubuntu"
-	distroVersion       = "jammy"
-	distroArch          = "amd64"
+	baseURL      = "http://ftp.debian.org/debian/dists"
+	suiteVersion = "sid"
 
-	pkgsListPath = "./build/pkgs_list"
+	pkgsListPath = "./pkgs_list"
 
 	requestTimeout = 5 * time.Second
 )
@@ -27,75 +33,104 @@ type Package struct {
 	Version string
 }
 
-func GetPublishedPackages(c *http.Client, names []string) ([]Package, error) {
+func GetPublishedPackages(c *http.Client, names []string, arch string) ([]Package, error) {
 	var pkgs []Package
 
-	for _, pkgName := range names {
-		ctx, cancelFn := context.WithTimeout(context.Background(), requestTimeout)
-		defer cancelFn()
+	ctx, cancelFn := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancelFn()
 
-		url := fmt.Sprintf("%s/%s/+archive/primary", launchpadAPIBaseURL, distroName)
+	releaseFileURL := fmt.Sprintf("%s/%s/InRelease", baseURL, suiteVersion)
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-		if err != nil {
-			return nil, fmt.Errorf("request creation: %w", err)
-		}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, releaseFileURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request creation: %w", err)
+	}
 
-		q := req.URL.Query()
-		q.Add("ws.op", "getPublishedBinaries")
-		q.Add("binary_name", pkgName)
-		q.Add("exact_match", "true")
-		q.Add("distro_arch_series", fmt.Sprintf("%s/%s/%s/%s", launchpadAPIBaseURL, distroName, distroVersion, distroArch))
-		q.Add("status", "Published")
-		q.Add("order_by_date", "true")
-		req.URL.RawQuery = q.Encode()
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
 
-		resp, err := c.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("request failed: %w", err)
-		}
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+	defer resp.Body.Close()
 
-		respData := map[string]any{}
-		if err := json.NewDecoder(resp.Body).Decode(&respData); err != nil {
-			return nil, fmt.Errorf("failed to decode response: %w", err)
-		}
-
-		entries, ok := respData["entries"].([]any)
-		if !ok {
-			return nil, fmt.Errorf("failed to parse response")
-		}
-
-		if len(entries) == 0 {
+	var controlFileHash string
+	var controlFileSize int64
+	controlFilePath := fmt.Sprintf("main/binary-%s/Packages.gz", arch)
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.Contains(line, controlFilePath) {
+			fields := strings.Fields(line)
+			if len(fields) > 1 {
+				controlFileHash = fields[0]
+				controlFileSize, _ = strconv.ParseInt(fields[1], 10, 64)
+			}
 			break
 		}
+	}
 
-		entry, ok := entries[0].(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("failed to parse entry")
+	if controlFileHash == "" {
+		return nil, fmt.Errorf("control file hash sum not found")
+	}
+
+	if controlFileSize <= 0 {
+		return nil, fmt.Errorf("control file size not found")
+	}
+
+	controlFileURL := fmt.Sprintf("%s/%s/%s", baseURL, suiteVersion, controlFilePath)
+	req, err = http.NewRequestWithContext(ctx, http.MethodGet, controlFileURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("request creation: %w", err)
+	}
+
+	resp, err = c.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.ContentLength != controlFileSize {
+		return nil, fmt.Errorf("control file response content length mismatch: %d vs %d", resp.ContentLength, controlFileSize)
+	}
+
+	h := md5.New()
+	dataRd := io.TeeReader(io.LimitReader(resp.Body, controlFileSize), h)
+
+	gzipRd, err := gzip.NewReader(dataRd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+	}
+
+	ctrl, err := control.ParseControl(bufio.NewReader(gzipRd), "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse control file data: %w", err)
+	}
+
+	actualHash := hex.EncodeToString(h.Sum(nil))
+	if controlFileHash != actualHash {
+		return nil, fmt.Errorf("control file hash mismatch: %q vs %q", controlFileHash, actualHash)
+	}
+
+	for _, binary := range ctrl.Binaries {
+		for _, pkgName := range names {
+			if binary.Package == pkgName {
+				version := binary.Values["Version"]
+				log.Printf("found %s=%s\n", pkgName, version)
+				pkgs = append(pkgs, Package{Name: pkgName, Version: version})
+				break
+			}
 		}
-
-		name, ok := entry["binary_package_name"].(string)
-		if !ok {
-			return nil, fmt.Errorf("failed to parse package name")
-		}
-
-		version, ok := entry["binary_package_version"].(string)
-		if !ok {
-			return nil, fmt.Errorf("failed to parse package version")
-		}
-
-		log.Printf("found %s=%s\n", name, version)
-
-		pkgs = append(pkgs, Package{Name: name, Version: version})
 	}
 
 	return pkgs, nil
 }
 
-func GenPinnedPackages(pkgsNames []string) error {
+func GenPinnedPackages(pkgsNames []string, arch string) error {
 	c := &http.Client{}
 
-	pkgs, err := GetPublishedPackages(c, pkgsNames)
+	pkgs, err := GetPublishedPackages(c, pkgsNames, arch)
 	if err != nil {
 		return fmt.Errorf("failed to get packages: %w", err)
 	}
@@ -115,7 +150,7 @@ func GenPinnedPackages(pkgsNames []string) error {
 
 func parsePkgsList(data string) []string {
 	var pkgs []string
-	list := strings.Split(data, "\n")
+	list := strings.Split(strings.TrimSuffix(data, "\n"), "\n")
 	for _, el := range list {
 		name, _, _ := strings.Cut(el, "=")
 		pkgs = append(pkgs, name)
@@ -129,7 +164,9 @@ func main() {
 		log.Fatalf("failed to read packages file: %s", err)
 	}
 
-	if err := GenPinnedPackages(parsePkgsList(string(data))); err != nil {
+	log.Printf("arch=%s", runtime.GOARCH)
+
+	if err := GenPinnedPackages(parsePkgsList(string(data)), runtime.GOARCH); err != nil {
 		log.Fatalf("failed to generate pinned packages: %s", err)
 	}
 

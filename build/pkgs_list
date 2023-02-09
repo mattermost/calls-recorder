@@ -1,7 +1,8 @@
-ca-certificates=20211016ubuntu0.22.04.1
-ffmpeg=7:4.4.2-0ubuntu0.22.04.1
-fonts-emojione=2.2.6+16.10.20160804-0ubuntu2
-pulseaudio=1:15.99.1+dfsg1-1ubuntu2
-unzip=6.0-26ubuntu3.1
-wget=1.21.2-2ubuntu1
-xvfb=2:21.1.3-2ubuntu2.5
+ca-certificates=20211016
+chromium=109.0.5414.119-1
+chromium-driver=109.0.5414.119-1
+ffmpeg=7:5.1.2-2
+fonts-recommended=1
+pulseaudio=16.1+dfsg1-2+b1
+wget=1.21.3-1+b2
+xvfb=2:21.1.6-1
