@@ -31,10 +31,9 @@ RUN groupadd -r calls && useradd -mr -g calls -G audio,video,pulse-access calls
 
 # hadolint ignore=DL3006
 FROM ${GO_IMAGE} as builder
-ARG ARCH
 
 #GO_BUILD_PLATFORMS holds the platforms that we will build the docker image against
-ARG GO_BUILD_PLATFORMS=linux-${ARCH:?}
+ARG GO_BUILD_PLATFORMS=linux-amd64
 
 # Setup directories structure and compile
 COPY . /src
@@ -42,8 +41,7 @@ WORKDIR /src
 RUN make go-build
 
 FROM base AS runner
-ARG ARCH
-COPY --from=builder /src/dist/calls-recorder-linux-${ARCH:?} /opt/calls-recorder/bin/calls-recorder
+COPY --from=builder /src/dist/calls-recorder-linux-amd64 /opt/calls-recorder/bin/calls-recorder
 
 # copy binary
 COPY ./build/entrypoint.sh .
