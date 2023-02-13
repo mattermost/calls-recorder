@@ -28,7 +28,11 @@ MAKEFLAGS     += --warn-undefined-variables
 CONFIG_APP_CODE         += ./cmd/recorder
 
 # Operating system arch
+ifneq (, $(shell which go))
 ARCH                    ?= $(shell go version | awk '{print substr($$4,index($$4,"/")+1)}')
+endif
+# Fallback to amd64 if ARCH is still unset.
+ARCH                    ?= amd64
 
 ## Docker Variables
 # Docker executable
