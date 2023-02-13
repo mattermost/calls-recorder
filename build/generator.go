@@ -25,7 +25,7 @@ const (
 
 	pkgsListPath = "./pkgs_list"
 
-	requestTimeout = 5 * time.Second
+	requestTimeout = 30 * time.Second
 )
 
 type Package struct {
