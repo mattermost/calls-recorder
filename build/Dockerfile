@@ -5,7 +5,7 @@ ARG GO_IMAGE=golang:1.18@sha256:fa71e1447cb0241324162a6c51297206928d755b16142ece
 ARG ARCH
 ARG RUNNER_IMAGE
 
-FROM ${RUNNER_IMAGE:?} as base
+FROM ${RUNNER_IMAGE} as base
 
 # Setup system dependencies
 WORKDIR /workdir
