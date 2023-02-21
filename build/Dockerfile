@@ -15,6 +15,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 COPY ./build/pkgs_list .
 # hadolint ignore=DL3008,SC2046
 RUN set -ex && \
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 648ACFD622F3D138 && \
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 0E98404D386FA1D9 && \
     apt-get update && \
     apt-get install --no-install-recommends -y $(cat pkgs_list) && \
     apt-get clean && \
