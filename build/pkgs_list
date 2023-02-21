@@ -1,7 +1,7 @@
 ca-certificates=20211016
 chromium=110.0.5481.77-2
 chromium-driver=110.0.5481.77-2
-ffmpeg=7:5.1.2-2
+ffmpeg=7:5.1.2-3
 fonts-recommended=1
 pulseaudio=16.1+dfsg1-2+b1
 wget=1.21.3-1+b2
