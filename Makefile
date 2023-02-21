@@ -6,7 +6,7 @@
 PROTECTED_BRANCH := master
 CURRENT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
 # Use repository name as application name
-APP_NAME    := $(shell basename -s .git `git config --get remote.origin.url`)
+APP_NAME    := calls-recorder
 # Get current commit
 APP_COMMIT  := $(shell git log --pretty=format:'%h' -n 1)
 # Check if we are in protected branch, if yes use `protected_branch_name-sha` as app version.
@@ -70,7 +70,7 @@ COSIGN_PASSWORD         ?= password
 
 ## Go Variables
 # Go executable
-GO                           := $(shell which go)
+GO ?= $(shell command -v go 2> /dev/null)
 # Extract GO version from go.mod file
 GO_VERSION                   ?= $(shell grep -E '^go' go.mod | awk {'print $$2'})
 # LDFLAGS
