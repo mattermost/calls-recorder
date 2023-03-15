@@ -24,21 +24,28 @@ func runCmd(cmd string, args string) (*exec.Cmd, error) {
 		return nil, err
 	}
 
+	if err := c.Start(); err != nil {
+		return nil, err
+	}
+
 	logOutput := func(out io.ReadCloser, name string) {
 		defer out.Close()
 		buf := make([]byte, logBufferSize)
 		for {
 			n, err := out.Read(buf)
+			if err == io.EOF {
+				return
+			}
 			if err != nil {
 				log.Printf("%s (%s): error reading: %s", cmd, name, err)
 				return
 			}
-			log.Printf("%s (%s): %s\n", cmd, name, strings.TrimSuffix(string(buf[:n]), "\n"))
+			log.Printf("%s (%s): %s", cmd, name, strings.TrimSuffix(string(buf[:n]), "\n"))
 		}
 	}
 
 	go logOutput(stdout, "stdout")
 	go logOutput(stderr, "stderr")
 
-	return c, c.Start()
+	return c, nil
 }
