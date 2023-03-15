@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -157,36 +156,20 @@ func (rec *Recorder) runBrowser(recURL string) error {
 
 func (rec *Recorder) runTranscoder(dst string) error {
 	args := fmt.Sprintf(`-y -thread_queue_size 1024 -f alsa -i default -r %d -thread_queue_size 1024 -f x11grab -draw_mouse 0 -s %dx%d -i :%d -c:v h264 -preset fast -vf format=yuv420p -b:v %dk -b:a %dk -movflags +faststart %s`, rec.cfg.FrameRate, rec.cfg.Width, rec.cfg.Height, displayID, rec.cfg.VideoRate, rec.cfg.AudioRate, dst)
-	log.Printf("running transcoder: %q", args)
-	cmd := exec.Command("ffmpeg", strings.Split(args, " ")...)
 
-	stderr, err := cmd.StderrPipe()
+	cmd, err := runCmd("ffmpeg", args)
 	if err != nil {
-		return fmt.Errorf("failed to pipe stderr: %w", err)
-	}
-
-	err = cmd.Start()
-	if err != nil {
-		return fmt.Errorf("failed to start transcoder: %w", err)
+		log.Fatal(err)
 	}
 
 	rec.transcoder = cmd
-
-	go func() {
-		scanner := bufio.NewScanner(stderr)
-		for scanner.Scan() {
-			log.Printf("transcoder: %s\n", scanner.Text())
-		}
-	}()
 
 	return nil
 }
 
 func runDisplayServer(width, height int) (*exec.Cmd, error) {
 	args := fmt.Sprintf(`:%d -screen 0 %dx%dx24 -dpi 96`, displayID, width, height)
-	log.Printf("running display server: %q", args)
-	cmd := exec.Command("Xvfb", strings.Split(args, " ")...)
-	return cmd, cmd.Start()
+	return runCmd("Xvfb", args)
 }
 
 func NewRecorder(cfg RecorderConfig) (*Recorder, error) {
