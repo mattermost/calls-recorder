@@ -1,4 +1,4 @@
-module headless
+module github.com/mattermost/calls-recorder
 
 go 1.18
 

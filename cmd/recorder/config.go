@@ -17,6 +17,17 @@ const (
 	AVFormatMP4 AVFormat = "mp4"
 )
 
+type H264Preset string
+
+const (
+	H264PresetMedium    = "medium"
+	H264PresetFast      = "fast"
+	H264PresetFaster    = "faster"
+	H264PresetVeryFast  = "veryfast"
+	H264PresetSuperFast = "superfast"
+	H264PresetUltraFast = "ultrafast"
+)
+
 const (
 	// defaults
 	VideoWidthDefault   = 1920
@@ -24,6 +35,7 @@ const (
 	VideoRateDefault    = 1500
 	AudioRateDefault    = 64
 	FrameRateDefault    = 30
+	VideoPresetDefault  = H264PresetFast
 	OutputFormatDefault = AVFormatMP4
 
 	// limits
@@ -52,7 +64,17 @@ type RecorderConfig struct {
 	VideoRate    int
 	AudioRate    int
 	FrameRate    int
+	VideoPreset  H264Preset
 	OutputFormat AVFormat
+}
+
+func (p H264Preset) IsValid() bool {
+	switch p {
+	case H264PresetMedium, H264PresetFast, H264PresetFaster, H264PresetVeryFast, H264PresetSuperFast, H264PresetUltraFast:
+		return true
+	default:
+		return false
+	}
 }
 
 func (cfg RecorderConfig) IsValid() error {
@@ -108,6 +130,9 @@ func (cfg RecorderConfig) IsValid() error {
 	if cfg.OutputFormat != AVFormatMP4 {
 		return fmt.Errorf("OutputFormat value is not valid")
 	}
+	if !cfg.VideoPreset.IsValid() {
+		return fmt.Errorf("VideoPreset value is not valid")
+	}
 
 	return nil
 }
@@ -136,6 +161,57 @@ func (cfg *RecorderConfig) SetDefaults() {
 	if cfg.OutputFormat == "" {
 		cfg.OutputFormat = OutputFormatDefault
 	}
+
+	if cfg.VideoPreset == "" {
+		cfg.VideoPreset = VideoPresetDefault
+	}
+}
+
+func (cfg RecorderConfig) ToEnv() []string {
+	return []string{
+		fmt.Sprintf("SITE_URL=%s", cfg.SiteURL),
+		fmt.Sprintf("CALL_ID=%s", cfg.CallID),
+		fmt.Sprintf("THREAD_ID=%s", cfg.ThreadID),
+		fmt.Sprintf("AUTH_TOKEN=%s", cfg.AuthToken),
+		fmt.Sprintf("WIDTH=%d", cfg.Width),
+		fmt.Sprintf("HEIGHT=%d", cfg.Height),
+		fmt.Sprintf("VIDEO_RATE=%d", cfg.VideoRate),
+		fmt.Sprintf("AUDIO_RATE=%d", cfg.AudioRate),
+		fmt.Sprintf("FRAME_RATE=%d", cfg.FrameRate),
+		fmt.Sprintf("VIDEO_PRESET=%s", cfg.VideoPreset),
+		fmt.Sprintf("OUTPUT_FORMAT=%s", cfg.OutputFormat),
+	}
+}
+
+func (cfg RecorderConfig) ToMap() map[string]any {
+	return map[string]any{
+		"site_url":      cfg.SiteURL,
+		"call_id":       cfg.CallID,
+		"thread_id":     cfg.ThreadID,
+		"auth_token":    cfg.AuthToken,
+		"width":         cfg.Width,
+		"height":        cfg.Height,
+		"video_rate":    cfg.VideoRate,
+		"audio_rate":    cfg.AudioRate,
+		"frame_rate":    cfg.FrameRate,
+		"video_preset":  cfg.VideoPreset,
+		"output_format": cfg.OutputFormat,
+	}
+}
+
+func (cfg *RecorderConfig) FromMap(m map[string]any) *RecorderConfig {
+	cfg.SiteURL, _ = m["site_url"].(string)
+	cfg.CallID, _ = m["call_id"].(string)
+	cfg.ThreadID, _ = m["thread_id"].(string)
+	cfg.AuthToken, _ = m["auth_token"].(string)
+	cfg.Width, _ = m["width"].(int)
+	cfg.Height, _ = m["height"].(int)
+	cfg.VideoRate, _ = m["video_rate"].(int)
+	cfg.AudioRate, _ = m["audio_rate"].(int)
+	cfg.FrameRate, _ = m["frame_rate"].(int)
+	cfg.VideoPreset, _ = m["video_preset"].(H264Preset)
+	cfg.OutputFormat, _ = m["output_format"].(AVFormat)
+	return cfg
 }
 
 func loadConfig() (RecorderConfig, error) {
@@ -183,6 +259,14 @@ func loadConfig() (RecorderConfig, error) {
 			return cfg, fmt.Errorf("failed to parse FrameRate: %w", err)
 		}
 		cfg.FrameRate = int(rate)
+	}
+
+	if val := os.Getenv("VIDEO_PRESET"); val != "" {
+		cfg.VideoPreset = H264Preset(val)
+	}
+
+	if val := os.Getenv("OUTPUT_FORMAT"); val != "" {
+		cfg.OutputFormat = AVFormat(val)
 	}
 
 	return cfg, nil
