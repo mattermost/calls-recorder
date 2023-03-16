@@ -157,7 +157,7 @@ func (rec *Recorder) runBrowser(recURL string) error {
 }
 
 func (rec *Recorder) runTranscoder(dst string) error {
-	args := fmt.Sprintf(`-y -thread_queue_size 1024 -f alsa -i default -r %d -thread_queue_size 1024 -f x11grab -draw_mouse 0 -s %dx%d -i :%d -c:v h264 -preset %s -vf format=yuv420p -b:v %dk -b:a %dk -movflags +faststart %s`,
+	args := fmt.Sprintf(`-y -thread_queue_size 4096 -f alsa -i default -r %d -thread_queue_size 4096 -f x11grab -draw_mouse 0 -s %dx%d -i :%d -c:v h264 -preset %s -vf format=yuv420p -b:v %dk -b:a %dk -movflags +faststart %s`,
 		rec.cfg.FrameRate,
 		rec.cfg.Width,
 		rec.cfg.Height,
