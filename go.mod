@@ -14,7 +14,6 @@ require (
 	github.com/chromedp/sysutil v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
-	github.com/dyatlov/go-opengraph v0.0.0-20210112100619-dae8665a5b09 // indirect
 	github.com/dyatlov/go-opengraph/opengraph v0.0.0-20220524092352-606d7b1e5f8a // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
@@ -57,4 +56,15 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+// Hack to prevent the willf/bitset module from being upgraded to 1.2.0.
+// They changed the module path from github.com/willf/bitset to
+// github.com/bits-and-blooms/bitset and a couple of dependent repos are yet
+// to update their module paths.
+exclude (
+	github.com/RoaringBitmap/roaring v0.7.0
+	github.com/RoaringBitmap/roaring v0.7.1
+	github.com/dyatlov/go-opengraph v0.0.0-20210112100619-dae8665a5b09
+	github.com/willf/bitset v1.2.0
 )
