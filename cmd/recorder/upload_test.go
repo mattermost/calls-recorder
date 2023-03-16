@@ -60,7 +60,7 @@ func TestUploadRecording(t *testing.T) {
 			},
 		}
 		err := rec.uploadRecording()
-		require.EqualError(t, err, "failed to create upload (400): : server error, ")
+		require.EqualError(t, err, "failed to create upload (400): : server error")
 	})
 
 	t.Run("upload data failure", func(t *testing.T) {
@@ -84,7 +84,7 @@ func TestUploadRecording(t *testing.T) {
 			},
 		}
 		err := rec.uploadRecording()
-		require.EqualError(t, err, "failed to upload data (400): : server error, ")
+		require.EqualError(t, err, "failed to upload data (400): : server error")
 	})
 
 	t.Run("save recording failure", func(t *testing.T) {
@@ -116,7 +116,7 @@ func TestUploadRecording(t *testing.T) {
 			},
 		}
 		err := rec.uploadRecording()
-		require.EqualError(t, err, "failed to save recording (400): : server error, ")
+		require.EqualError(t, err, "failed to save recording (400): : server error")
 	})
 
 	t.Run("success", func(t *testing.T) {
