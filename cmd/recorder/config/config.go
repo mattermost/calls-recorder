@@ -204,13 +204,41 @@ func (cfg *RecorderConfig) FromMap(m map[string]any) *RecorderConfig {
 	cfg.CallID, _ = m["call_id"].(string)
 	cfg.ThreadID, _ = m["thread_id"].(string)
 	cfg.AuthToken, _ = m["auth_token"].(string)
-	cfg.Width, _ = m["width"].(int)
-	cfg.Height, _ = m["height"].(int)
-	cfg.VideoRate, _ = m["video_rate"].(int)
-	cfg.AudioRate, _ = m["audio_rate"].(int)
-	cfg.FrameRate, _ = m["frame_rate"].(int)
-	cfg.VideoPreset, _ = m["video_preset"].(H264Preset)
-	cfg.OutputFormat, _ = m["output_format"].(AVFormat)
+	if width, ok := m["width"].(float64); ok {
+		cfg.Width = int(width)
+	} else {
+		cfg.Width, _ = m["width"].(int)
+	}
+	if height, ok := m["height"].(float64); ok {
+		cfg.Height = int(height)
+	} else {
+		cfg.Height, _ = m["height"].(int)
+	}
+	if videoRate, ok := m["video_rate"].(float64); ok {
+		cfg.VideoRate = int(videoRate)
+	} else {
+		cfg.VideoRate, _ = m["video_rate"].(int)
+	}
+	if audioRate, ok := m["audio_rate"].(float64); ok {
+		cfg.AudioRate = int(audioRate)
+	} else {
+		cfg.AudioRate, _ = m["audio_rate"].(int)
+	}
+	if frameRate, ok := m["frame_rate"].(float64); ok {
+		cfg.FrameRate = int(frameRate)
+	} else {
+		cfg.FrameRate, _ = m["frame_rate"].(int)
+	}
+	if videoPreset, ok := m["video_preset"].(string); ok {
+		cfg.VideoPreset = H264Preset(videoPreset)
+	} else {
+		cfg.VideoPreset, _ = m["video_preset"].(H264Preset)
+	}
+	if outputFormat, ok := m["output_format"].(string); ok {
+		cfg.OutputFormat = AVFormat(outputFormat)
+	} else {
+		cfg.OutputFormat, _ = m["output_format"].(AVFormat)
+	}
 	return cfg
 }
 
