@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/mattermost/calls-recorder/cmd/recorder/config"
 )
 
 func main() {
@@ -16,7 +18,7 @@ func main() {
 		log.Fatalf("failed to write pid file: %s", err)
 	}
 
-	cfg, err := loadConfig()
+	cfg, err := config.LoadFromEnv()
 	if err != nil {
 		log.Fatalf("failed to load config: %s", err)
 	}

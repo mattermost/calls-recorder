@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"fmt"
@@ -214,7 +214,7 @@ func (cfg *RecorderConfig) FromMap(m map[string]any) *RecorderConfig {
 	return cfg
 }
 
-func loadConfig() (RecorderConfig, error) {
+func LoadFromEnv() (RecorderConfig, error) {
 	var cfg RecorderConfig
 	cfg.SiteURL = strings.TrimSuffix(os.Getenv("SITE_URL"), "/")
 	cfg.CallID = os.Getenv("CALL_ID")

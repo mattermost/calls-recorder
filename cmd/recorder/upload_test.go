@@ -7,6 +7,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/mattermost/calls-recorder/cmd/recorder/config"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +27,7 @@ func TestUploadRecording(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	cfg := RecorderConfig{
+	cfg := config.RecorderConfig{
 		SiteURL:   ts.URL,
 		CallID:    "8w8jorhr7j83uqr6y1st894hqe",
 		ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",

@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/mattermost/calls-recorder/cmd/recorder/config"
+
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 )
@@ -27,7 +29,7 @@ const (
 )
 
 type Recorder struct {
-	cfg RecorderConfig
+	cfg config.RecorderConfig
 
 	readyCh   chan struct{}
 	stopCh    chan struct{}
@@ -181,7 +183,7 @@ func runDisplayServer(width, height int) (*exec.Cmd, error) {
 	return runCmd("Xvfb", args)
 }
 
-func NewRecorder(cfg RecorderConfig) (*Recorder, error) {
+func NewRecorder(cfg config.RecorderConfig) (*Recorder, error) {
 	if err := cfg.IsValid(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}

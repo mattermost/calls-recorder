@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"os"
@@ -204,40 +204,40 @@ func TestConfigSetDefaults(t *testing.T) {
 	})
 }
 
-func TestLoadConfig(t *testing.T) {
+func TestLoadFromEnv(t *testing.T) {
 	t.Run("no env set", func(t *testing.T) {
-		cfg, err := loadConfig()
+		cfg, err := LoadFromEnv()
 		require.NoError(t, err)
 		require.Empty(t, cfg)
 	})
 
 	t.Run("parsing failure", func(t *testing.T) {
 		os.Setenv("WIDTH", "invalid")
-		cfg, err := loadConfig()
+		cfg, err := LoadFromEnv()
 		require.Empty(t, cfg)
 		require.EqualError(t, err, `failed to parse Width: strconv.ParseInt: parsing "invalid": invalid syntax`)
 		os.Unsetenv("WIDTH")
 
 		os.Setenv("HEIGHT", "invalid")
-		cfg, err = loadConfig()
+		cfg, err = LoadFromEnv()
 		require.Empty(t, cfg)
 		require.EqualError(t, err, `failed to parse Height: strconv.ParseInt: parsing "invalid": invalid syntax`)
 		os.Unsetenv("HEIGHT")
 
 		os.Setenv("VIDEO_RATE", "invalid")
-		cfg, err = loadConfig()
+		cfg, err = LoadFromEnv()
 		require.Empty(t, cfg)
 		require.EqualError(t, err, `failed to parse VideoRate: strconv.ParseInt: parsing "invalid": invalid syntax`)
 		os.Unsetenv("VIDEO_RATE")
 
 		os.Setenv("AUDIO_RATE", "invalid")
-		cfg, err = loadConfig()
+		cfg, err = LoadFromEnv()
 		require.Empty(t, cfg)
 		require.EqualError(t, err, `failed to parse AudioRate: strconv.ParseInt: parsing "invalid": invalid syntax`)
 		os.Unsetenv("AUDIO_RATE")
 
 		os.Setenv("FRAME_RATE", "invalid")
-		cfg, err = loadConfig()
+		cfg, err = LoadFromEnv()
 		require.Empty(t, cfg)
 		require.EqualError(t, err, `failed to parse FrameRate: strconv.ParseInt: parsing "invalid": invalid syntax`)
 		os.Unsetenv("FRAME_RATE")
@@ -264,7 +264,7 @@ func TestLoadConfig(t *testing.T) {
 		defer os.Unsetenv("FRAME_RATE")
 		os.Setenv("VIDEO_PRESET", "medium")
 		defer os.Unsetenv("VIDEO_PRESET")
-		cfg, err := loadConfig()
+		cfg, err := LoadFromEnv()
 		require.NoError(t, err)
 		require.NotEmpty(t, cfg)
 		require.Equal(t, RecorderConfig{
