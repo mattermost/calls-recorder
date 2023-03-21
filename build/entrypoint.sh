@@ -53,9 +53,6 @@ term_handler() {
 # On callback, kill the last background process, which is `tail -f /dev/null` and execute the specified handler
 trap 'kill ${!}; term_handler' SIGTERM
 
-# DEV_MODE is optional so we need to check whether it's set before relaying it to the recorder app.
-DEV="${DEV_MODE:-false}"
-
 RECORDER_USER=calls
 
 # Give permission to write recording files.
@@ -67,14 +64,14 @@ runuser -l $RECORDER_USER -c \
   AUTH_TOKEN=$AUTH_TOKEN \
   CALL_ID=$CALL_ID \
   THREAD_ID=$THREAD_ID \
-  WIDTH=$WIDTH \
-  HEIGHT=$HEIGHT \
-  VIDEO_RATE=$VIDEO_RATE \
-  AUDIO_RATE=$AUDIO_RATE \
-  FRAME_RATE=$FRAME_RATE \
-  VIDEO_PRESET=$VIDEO_PRESET \
-  OUTPUT_FORMAT=$OUTPUT_FORMAT \
-  DEV_MODE=$DEV \
+  WIDTH=${WIDTH:-0} \
+  HEIGHT=${HEIGHT:-0} \
+  VIDEO_RATE=${VIDEO_RATE:-0} \
+  AUDIO_RATE=${AUDIO_RATE:-0} \
+  FRAME_RATE=${FRAME_RATE:-0} \
+  VIDEO_PRESET=${VIDEO_PRESET:-} \
+  OUTPUT_FORMAT=${OUTPUT_FORMAT:-} \
+  DEV_MODE=${DEV_MODE:-false} \
   XDG_RUNTIME_DIR=/home/$RECORDER_USER/.cache/xdgr \
   /bin/bash -c '/opt/calls-recorder/bin/calls-recorder; echo \$? > ${RECORDER_EXIT_CODE_FILE}'" &
 
