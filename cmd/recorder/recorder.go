@@ -26,6 +26,7 @@ const (
 	stopTimeout                = 10 * time.Second
 	maxUploadRetryAttempts     = 5
 	uploadRetryAttemptWaitTime = 5 * time.Second
+	initPollInterval           = 250 * time.Millisecond
 )
 
 type Recorder struct {
@@ -100,7 +101,10 @@ func (rec *Recorder) runBrowser(recURL string) error {
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		switch ev := ev.(type) {
 		case *runtime.EventExceptionThrown:
-			log.Printf("%s", ev.ExceptionDetails.Text)
+			log.Printf("chrome exception: %s", ev.ExceptionDetails.Text)
+			if ev.ExceptionDetails.Exception != nil {
+				log.Printf("chrome exception: %s", ev.ExceptionDetails.Exception.Description)
+			}
 		case *runtime.EventConsoleAPICalled:
 			args := make([]string, 0, len(ev.Args))
 			for _, arg := range ev.Args {
@@ -120,16 +124,23 @@ func (rec *Recorder) runBrowser(recURL string) error {
 			}
 
 			str := fmt.Sprintf("chrome console %s %s", ev.Type.String(), strings.Join(args, " "))
-			// TODO: improve this check
-			if strings.Contains(str, "rtc connected") {
-				close(rec.readyCh)
-			}
 			log.Printf(str)
 		}
 	})
 
+	var connected bool
+	connectCheckExpr := "window.callsClient && window.callsClient.connected && !window.callsClient.closed"
 	if err := chromedp.Run(ctx,
 		chromedp.Navigate(recURL),
+		chromedp.Poll(connectCheckExpr, &connected, chromedp.WithPollingInterval(initPollInterval)),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			if connected {
+				log.Printf("connected to call")
+				close(rec.readyCh)
+				return nil
+			}
+			return fmt.Errorf("connectivity check failed")
+		}),
 	); err != nil {
 		return fmt.Errorf("failed to run chromedp: %w", err)
 	}
@@ -138,13 +149,21 @@ func (rec *Recorder) runBrowser(recURL string) error {
 
 	log.Printf("stop received, shutting down browser")
 
+	var disconnected bool
+	disconnectCheckExpr := "window.callsClient.disconnect(); !window.callsClient || window.callsClient.closed"
 	if err := chromedp.Run(ctx,
-		chromedp.EvaluateAsDevTools("window.callsClient.disconnect();", nil),
+		chromedp.Evaluate(disconnectCheckExpr, &disconnected),
 	); err != nil {
 		log.Printf("failed to run chromedp: %s", err)
 	}
 
-	tctx, cancelCtx := context.WithTimeout(ctx, 10*time.Second)
+	if disconnected {
+		log.Printf("disconnected from call successfully")
+	} else {
+		log.Printf("failed to disconnect")
+	}
+
+	tctx, cancelCtx := context.WithTimeout(ctx, stopTimeout)
 	// graceful cancel
 	if err := chromedp.Cancel(tctx); err != nil {
 		log.Printf("failed to cancel context: %s", err)
