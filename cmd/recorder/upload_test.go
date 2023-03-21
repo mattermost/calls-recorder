@@ -7,6 +7,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/mattermost/calls-recorder/cmd/recorder/config"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +27,7 @@ func TestUploadRecording(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	cfg := RecorderConfig{
+	cfg := config.RecorderConfig{
 		SiteURL:   ts.URL,
 		CallID:    "8w8jorhr7j83uqr6y1st894hqe",
 		ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
@@ -60,7 +62,7 @@ func TestUploadRecording(t *testing.T) {
 			},
 		}
 		err := rec.uploadRecording()
-		require.EqualError(t, err, "failed to create upload (400): : server error, ")
+		require.EqualError(t, err, "failed to create upload (400): : server error")
 	})
 
 	t.Run("upload data failure", func(t *testing.T) {
@@ -84,7 +86,7 @@ func TestUploadRecording(t *testing.T) {
 			},
 		}
 		err := rec.uploadRecording()
-		require.EqualError(t, err, "failed to upload data (400): : server error, ")
+		require.EqualError(t, err, "failed to upload data (400): : server error")
 	})
 
 	t.Run("save recording failure", func(t *testing.T) {
@@ -116,7 +118,7 @@ func TestUploadRecording(t *testing.T) {
 			},
 		}
 		err := rec.uploadRecording()
-		require.EqualError(t, err, "failed to save recording (400): : server error, ")
+		require.EqualError(t, err, "failed to save recording (400): : server error")
 	})
 
 	t.Run("success", func(t *testing.T) {

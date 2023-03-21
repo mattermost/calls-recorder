@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/mattermost/calls-recorder/cmd/recorder/config"
+
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 )
@@ -27,7 +29,7 @@ const (
 )
 
 type Recorder struct {
-	cfg RecorderConfig
+	cfg config.RecorderConfig
 
 	readyCh   chan struct{}
 	stopCh    chan struct{}
@@ -155,7 +157,16 @@ func (rec *Recorder) runBrowser(recURL string) error {
 }
 
 func (rec *Recorder) runTranscoder(dst string) error {
-	args := fmt.Sprintf(`-y -thread_queue_size 1024 -f alsa -i default -r %d -thread_queue_size 1024 -f x11grab -draw_mouse 0 -s %dx%d -i :%d -c:v h264 -preset fast -vf format=yuv420p -b:v %dk -b:a %dk -movflags +faststart %s`, rec.cfg.FrameRate, rec.cfg.Width, rec.cfg.Height, displayID, rec.cfg.VideoRate, rec.cfg.AudioRate, dst)
+	args := fmt.Sprintf(`-y -thread_queue_size 4096 -f alsa -i default -r %d -thread_queue_size 4096 -f x11grab -draw_mouse 0 -s %dx%d -i :%d -c:v h264 -preset %s -vf format=yuv420p -b:v %dk -b:a %dk -movflags +faststart %s`,
+		rec.cfg.FrameRate,
+		rec.cfg.Width,
+		rec.cfg.Height,
+		displayID,
+		rec.cfg.VideoPreset,
+		rec.cfg.VideoRate,
+		rec.cfg.AudioRate,
+		dst,
+	)
 
 	cmd, err := runCmd("ffmpeg", args)
 	if err != nil {
@@ -172,7 +183,7 @@ func runDisplayServer(width, height int) (*exec.Cmd, error) {
 	return runCmd("Xvfb", args)
 }
 
-func NewRecorder(cfg RecorderConfig) (*Recorder, error) {
+func NewRecorder(cfg config.RecorderConfig) (*Recorder, error) {
 	if err := cfg.IsValid(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}

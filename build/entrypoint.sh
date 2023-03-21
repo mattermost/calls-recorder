@@ -67,6 +67,13 @@ runuser -l $RECORDER_USER -c \
   AUTH_TOKEN=$AUTH_TOKEN \
   CALL_ID=$CALL_ID \
   THREAD_ID=$THREAD_ID \
+  WIDTH=$WIDTH \
+  HEIGHT=$HEIGHT \
+  VIDEO_RATE=$VIDEO_RATE \
+  AUDIO_RATE=$AUDIO_RATE \
+  FRAME_RATE=$FRAME_RATE \
+  VIDEO_PRESET=$VIDEO_PRESET \
+  OUTPUT_FORMAT=$OUTPUT_FORMAT \
   DEV_MODE=$DEV \
   XDG_RUNTIME_DIR=/home/$RECORDER_USER/.cache/xdgr \
   /bin/bash -c '/opt/calls-recorder/bin/calls-recorder; echo \$? > ${RECORDER_EXIT_CODE_FILE}'" &
