@@ -18,6 +18,10 @@ RECORDER_EXIT_CODE_FILE=/tmp/recorder.ecode
 
 # SIGTERM handler
 term_handler() {
+  # We unsubscribe the handler to avoid issues if receiving another
+  # SIGTERM while in here (e.g. stopping twice).
+  trap - SIGTERM
+
   # If pid file doesn't exit we exit with failure
   # as the recording process hasn't started properly.
   if [ ! -f "$RECORDER_PID_FILE" ]; then
