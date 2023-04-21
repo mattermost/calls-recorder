@@ -16,6 +16,20 @@ RECORDER_PID_FILE=/tmp/recorder.pid
 RECORDER_EXIT_CODE=143 # 128 + 15 -- SIGTERM
 RECORDER_EXIT_CODE_FILE=/tmp/recorder.ecode
 
+get_exit_code() {
+  # If exit code file doesn't exit we exit with failure.
+  if [ ! -f "$RECORDER_EXIT_CODE_FILE" ]; then
+    echo "exit code not found"
+    exit 1
+  fi
+
+  EXIT_CODE=`cat $RECORDER_EXIT_CODE_FILE`
+
+  # Sum the recorder's exit code to the base exit code to
+  # inform the job handler in case of failure.
+  RECORDER_EXIT_CODE=$(($RECORDER_EXIT_CODE+$EXIT_CODE))
+}
+
 # SIGTERM handler
 term_handler() {
   # We unsubscribe the handler to avoid issues if receiving another
@@ -39,18 +53,7 @@ term_handler() {
   # Wait a second for the recorder's exit code to be saved.
   sleep 1
 
-  # If exit code file doesn't exit we exit with failure.
-  if [ ! -f "$RECORDER_EXIT_CODE_FILE" ]; then
-    echo "exit code not found"
-    exit 1
-  fi
-
-  EXIT_CODE=`cat $RECORDER_EXIT_CODE_FILE`
-
-  # Sum the recorder's exit code to the base exit code to
-  # inform the job handler in case of failure.
-  RECORDER_EXIT_CODE=$(($RECORDER_EXIT_CODE+$EXIT_CODE))
-
+  get_exit_code
   exit $RECORDER_EXIT_CODE;
 }
 
@@ -81,3 +84,6 @@ runuser -l $RECORDER_USER -c \
 
 # Wait forever
 wait ${!}
+
+get_exit_code
+exit $RECORDER_EXIT_CODE;
