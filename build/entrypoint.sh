@@ -13,10 +13,9 @@ pactl load-module module-null-sink sink_name="grab" sink_properties=device.descr
 # Forward signals to service
 RECORDER_PID=0
 RECORDER_PID_FILE=/tmp/recorder.pid
-RECORDER_EXIT_CODE=143 # 128 + 15 -- SIGTERM
 RECORDER_EXIT_CODE_FILE=/tmp/recorder.ecode
 
-get_exit_code() {
+exit_handler() {
   # If exit code file doesn't exit we exit with failure.
   if [ ! -f "$RECORDER_EXIT_CODE_FILE" ]; then
     echo "exit code not found"
@@ -25,9 +24,7 @@ get_exit_code() {
 
   EXIT_CODE=`cat $RECORDER_EXIT_CODE_FILE`
 
-  # Sum the recorder's exit code to the base exit code to
-  # inform the job handler in case of failure.
-  RECORDER_EXIT_CODE=$(($RECORDER_EXIT_CODE+$EXIT_CODE))
+  exit $EXIT_CODE
 }
 
 # SIGTERM handler
@@ -53,8 +50,7 @@ term_handler() {
   # Wait a second for the recorder's exit code to be saved.
   sleep 1
 
-  get_exit_code
-  exit $RECORDER_EXIT_CODE;
+  exit_handler
 }
 
 # On callback, kill the last background process, which is `tail -f /dev/null` and execute the specified handler
@@ -85,5 +81,4 @@ runuser -l $RECORDER_USER -c \
 # Wait forever
 wait ${!}
 
-get_exit_code
-exit $RECORDER_EXIT_CODE;
+exit_handler
