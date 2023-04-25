@@ -27,6 +27,7 @@ const (
 	maxUploadRetryAttempts     = 5
 	uploadRetryAttemptWaitTime = 5 * time.Second
 	initPollInterval           = 250 * time.Millisecond
+	connCheckInterval          = 1 * time.Second
 )
 
 type Recorder struct {
@@ -145,32 +146,54 @@ func (rec *Recorder) runBrowser(recURL string) error {
 		return fmt.Errorf("failed to run chromedp: %w", err)
 	}
 
-	<-rec.stopCh
-
-	log.Printf("stop received, shutting down browser")
+	defer func() {
+		tctx, cancelCtx := context.WithTimeout(ctx, stopTimeout)
+		// graceful cancel
+		if err := chromedp.Cancel(tctx); err != nil {
+			log.Printf("failed to cancel context: %s", err)
+		}
+		cancelCtx()
+		close(rec.stoppedCh)
+	}()
 
 	var disconnected bool
-	disconnectCheckExpr := "window.callsClient.disconnect(); !window.callsClient || window.callsClient.closed"
+	disconnectCheckExpr := "!window.callsClient || window.callsClient.closed"
+
+	ticker := time.NewTicker(connCheckInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-rec.stopCh:
+			log.Printf("stop signal received, shutting down browser")
+		case <-ticker.C:
+			if err := chromedp.Run(ctx,
+				chromedp.Evaluate(disconnectCheckExpr, &disconnected),
+			); err != nil {
+				log.Printf("failed to run chromedp: %s", err)
+			}
+			if disconnected {
+				log.Printf("disconnected from call, shutting down")
+				if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
+					log.Printf("failed to send SIGTERM signal: %s", err)
+				}
+				return nil
+			}
+			continue
+		}
+		break
+	}
+
+	disconnectExpr := "window.callsClient.disconnect();"
 	if err := chromedp.Run(ctx,
-		chromedp.Evaluate(disconnectCheckExpr, &disconnected),
+		chromedp.Evaluate(disconnectExpr+disconnectCheckExpr, &disconnected),
 	); err != nil {
 		log.Printf("failed to run chromedp: %s", err)
 	}
-
 	if disconnected {
 		log.Printf("disconnected from call successfully")
 	} else {
 		log.Printf("failed to disconnect")
 	}
-
-	tctx, cancelCtx := context.WithTimeout(ctx, stopTimeout)
-	// graceful cancel
-	if err := chromedp.Cancel(tctx); err != nil {
-		log.Printf("failed to cancel context: %s", err)
-	}
-	cancelCtx()
-
-	close(rec.stoppedCh)
 
 	return nil
 }
