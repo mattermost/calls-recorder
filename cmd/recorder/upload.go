@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mattermost/mattermost-server/server/public/model"
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 func (rec *Recorder) uploadRecording() error {
