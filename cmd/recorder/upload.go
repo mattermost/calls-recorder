@@ -1,13 +1,20 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/mattermost/mattermost/server/public/model"
+)
+
+const (
+	httpRequestTimeout = 10 * time.Second
+	httpUploadTimeout  = 5 * time.Minute
 )
 
 func (rec *Recorder) uploadRecording() error {
@@ -37,21 +44,27 @@ func (rec *Recorder) uploadRecording() error {
 		return fmt.Errorf("failed to encode payload: %w", err)
 	}
 
-	resp, err := client.DoAPIRequestBytes(http.MethodPost, apiURL+"/uploads", payload, "")
+	ctx, cancelCtx := context.WithTimeout(context.Background(), httpRequestTimeout)
+	defer cancelCtx()
+	resp, err := client.DoAPIRequestBytes(ctx, http.MethodPost, apiURL+"/uploads", payload, "")
 	defer resp.Body.Close()
 	if err != nil {
 		return fmt.Errorf("failed to create upload (%d): %w", resp.StatusCode, err)
 	}
+	cancelCtx()
 
 	if err := json.NewDecoder(resp.Body).Decode(&us); err != nil {
 		return fmt.Errorf("failed to decode response body: %w", err)
 	}
 
-	resp, err = client.DoAPIRequestReader(http.MethodPost, apiURL+"/uploads/"+us.Id, file, nil)
+	ctx, cancelCtx = context.WithTimeout(context.Background(), httpUploadTimeout)
+	defer cancelCtx()
+	resp, err = client.DoAPIRequestReader(ctx, http.MethodPost, apiURL+"/uploads/"+us.Id, file, nil)
 	defer resp.Body.Close()
 	if err != nil {
 		return fmt.Errorf("failed to upload data (%d): %w", resp.StatusCode, err)
 	}
+	cancelCtx()
 
 	// TODO (MM-48545): handle upload resumption.
 
@@ -69,7 +82,9 @@ func (rec *Recorder) uploadRecording() error {
 	}
 
 	url := fmt.Sprintf("%s/calls/%s/recordings", apiURL, rec.cfg.CallID)
-	resp, err = client.DoAPIRequestBytes(http.MethodPost, url, payload, "")
+	ctx, cancelCtx = context.WithTimeout(context.Background(), httpRequestTimeout)
+	defer cancelCtx()
+	resp, err = client.DoAPIRequestBytes(ctx, http.MethodPost, url, payload, "")
 	defer resp.Body.Close()
 	if err != nil {
 		return fmt.Errorf("failed to save recording (%d): %w", resp.StatusCode, err)
