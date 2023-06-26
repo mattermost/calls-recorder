@@ -47,10 +47,10 @@ func (rec *Recorder) uploadRecording() error {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), httpRequestTimeout)
 	defer cancelCtx()
 	resp, err := client.DoAPIRequestBytes(ctx, http.MethodPost, apiURL+"/uploads", payload, "")
-	defer resp.Body.Close()
 	if err != nil {
 		return fmt.Errorf("failed to create upload (%d): %w", resp.StatusCode, err)
 	}
+	defer resp.Body.Close()
 	cancelCtx()
 
 	if err := json.NewDecoder(resp.Body).Decode(&us); err != nil {
@@ -60,10 +60,10 @@ func (rec *Recorder) uploadRecording() error {
 	ctx, cancelCtx = context.WithTimeout(context.Background(), httpUploadTimeout)
 	defer cancelCtx()
 	resp, err = client.DoAPIRequestReader(ctx, http.MethodPost, apiURL+"/uploads/"+us.Id, file, nil)
-	defer resp.Body.Close()
 	if err != nil {
 		return fmt.Errorf("failed to upload data (%d): %w", resp.StatusCode, err)
 	}
+	defer resp.Body.Close()
 	cancelCtx()
 
 	// TODO (MM-48545): handle upload resumption.
@@ -85,10 +85,10 @@ func (rec *Recorder) uploadRecording() error {
 	ctx, cancelCtx = context.WithTimeout(context.Background(), httpRequestTimeout)
 	defer cancelCtx()
 	resp, err = client.DoAPIRequestBytes(ctx, http.MethodPost, url, payload, "")
-	defer resp.Body.Close()
 	if err != nil {
 		return fmt.Errorf("failed to save recording (%d): %w", resp.StatusCode, err)
 	}
+	defer resp.Body.Close()
 
 	return nil
 }
