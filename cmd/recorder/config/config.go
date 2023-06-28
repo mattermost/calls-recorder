@@ -53,10 +53,11 @@ const (
 
 type RecorderConfig struct {
 	// input config
-	SiteURL   string
-	CallID    string
-	ThreadID  string
-	AuthToken string
+	SiteURL     string
+	CallID      string
+	ThreadID    string
+	RecordingID string
+	AuthToken   string
 
 	// output config
 	Width        int
@@ -104,6 +105,12 @@ func (cfg RecorderConfig) IsValid() error {
 		return fmt.Errorf("ThreadID cannot be empty")
 	} else if !idRE.MatchString(cfg.ThreadID) {
 		return fmt.Errorf("ThreadID parsing failed")
+	}
+
+	if cfg.RecordingID == "" {
+		return fmt.Errorf("RecordingID cannot be empty")
+	} else if !idRE.MatchString(cfg.RecordingID) {
+		return fmt.Errorf("RecordingID parsing failed")
 	}
 
 	if cfg.AuthToken == "" {
@@ -172,6 +179,7 @@ func (cfg RecorderConfig) ToEnv() []string {
 		fmt.Sprintf("SITE_URL=%s", cfg.SiteURL),
 		fmt.Sprintf("CALL_ID=%s", cfg.CallID),
 		fmt.Sprintf("THREAD_ID=%s", cfg.ThreadID),
+		fmt.Sprintf("RECORDING_ID=%s", cfg.RecordingID),
 		fmt.Sprintf("AUTH_TOKEN=%s", cfg.AuthToken),
 		fmt.Sprintf("WIDTH=%d", cfg.Width),
 		fmt.Sprintf("HEIGHT=%d", cfg.Height),
@@ -188,6 +196,7 @@ func (cfg RecorderConfig) ToMap() map[string]any {
 		"site_url":      cfg.SiteURL,
 		"call_id":       cfg.CallID,
 		"thread_id":     cfg.ThreadID,
+		"recording_id":  cfg.RecordingID,
 		"auth_token":    cfg.AuthToken,
 		"width":         cfg.Width,
 		"height":        cfg.Height,
@@ -203,6 +212,7 @@ func (cfg *RecorderConfig) FromMap(m map[string]any) *RecorderConfig {
 	cfg.SiteURL, _ = m["site_url"].(string)
 	cfg.CallID, _ = m["call_id"].(string)
 	cfg.ThreadID, _ = m["thread_id"].(string)
+	cfg.RecordingID, _ = m["recording_id"].(string)
 	cfg.AuthToken, _ = m["auth_token"].(string)
 	if width, ok := m["width"].(float64); ok {
 		cfg.Width = int(width)
@@ -247,6 +257,7 @@ func LoadFromEnv() (RecorderConfig, error) {
 	cfg.SiteURL = strings.TrimSuffix(os.Getenv("SITE_URL"), "/")
 	cfg.CallID = os.Getenv("CALL_ID")
 	cfg.ThreadID = os.Getenv("THREAD_ID")
+	cfg.RecordingID = os.Getenv("RECORDING_ID")
 	cfg.AuthToken = os.Getenv("AUTH_TOKEN")
 
 	if val := os.Getenv("WIDTH"); val != "" {
