@@ -61,6 +61,9 @@ RECORDER_USER=calls
 # Give permission to write recording files.
 chown -R $RECORDER_USER:$RECORDER_USER /recs
 
+# Turn off trace flag so that we avoid logging all the env variables.
+set +x
+
 # Run service as unprivileged user.
 runuser -l $RECORDER_USER -c \
   "SITE_URL=$SITE_URL \
@@ -77,6 +80,9 @@ runuser -l $RECORDER_USER -c \
   DEV_MODE=${DEV_MODE:-false} \
   XDG_RUNTIME_DIR=/home/$RECORDER_USER/.cache/xdgr \
   /bin/bash -c '/opt/calls-recorder/bin/calls-recorder; echo \$? > ${RECORDER_EXIT_CODE_FILE}'" &
+
+# Turn track flag back on
+set -x
 
 # Wait forever
 wait ${!}

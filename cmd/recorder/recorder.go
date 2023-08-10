@@ -125,7 +125,8 @@ func (rec *Recorder) runBrowser(recURL string) error {
 			}
 
 			str := fmt.Sprintf("chrome console %s %s", ev.Type.String(), strings.Join(args, " "))
-			log.Printf(str)
+
+			log.Printf(sanitizeConsoleLog(str))
 		}
 	})
 
