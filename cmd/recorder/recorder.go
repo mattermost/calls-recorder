@@ -92,9 +92,11 @@ func (rec *Recorder) runBrowser(recURL string) error {
 		opts = append(opts, chromedp.Flag("unsafely-treat-insecure-origin-as-secure",
 			"http://172.17.0.1:8065,http://host.docker.internal:8065,http://mm-server:8065,http://host.minikube.internal:8065"))
 		opts = append(opts, chromedp.NoSandbox)
-		contextOpts = append(contextOpts, chromedp.WithLogf(log.Printf))
-		contextOpts = append(contextOpts, chromedp.WithDebugf(log.Printf))
 	}
+
+	contextOpts = append(contextOpts, chromedp.WithLogf(sanitizedPrintf))
+	contextOpts = append(contextOpts, chromedp.WithErrorf(sanitizedPrintf))
+	contextOpts = append(contextOpts, chromedp.WithDebugf(sanitizedPrintf))
 
 	allocCtx, _ := chromedp.NewExecAllocator(context.Background(), opts...)
 	ctx, _ := chromedp.NewContext(allocCtx, contextOpts...)
@@ -126,7 +128,7 @@ func (rec *Recorder) runBrowser(recURL string) error {
 
 			str := fmt.Sprintf("chrome console %s %s", ev.Type.String(), strings.Join(args, " "))
 
-			log.Printf(sanitizeConsoleLog(str))
+			log.Printf(sanitizeLog(str))
 		}
 	})
 
