@@ -42,71 +42,87 @@ func TestConfigIsValid(t *testing.T) {
 			expectedError: "ThreadID cannot be empty",
 		},
 		{
+			name: "missing RecordingID",
+			cfg: RecorderConfig{
+				SiteURL:   "http://localhost:8065",
+				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
+				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
+			},
+			expectedError: "RecordingID cannot be empty",
+		},
+		{
 			name: "missing AuthToken",
 			cfg: RecorderConfig{
-				SiteURL:  "http://localhost:8065",
-				CallID:   "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID: "udzdsg7dwidbzcidx5khrf8nee",
+				SiteURL:     "http://localhost:8065",
+				CallID:      "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+				RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
 			},
 			expectedError: "AuthToken cannot be empty",
 		},
 		{
 			name: "invalid Width",
 			cfg: RecorderConfig{
-				SiteURL:   "http://localhost:8065",
-				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
-				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
+				SiteURL:     "http://localhost:8065",
+				CallID:      "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+				RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
+				AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
 			},
 			expectedError: "Width value is not valid",
 		},
 		{
 			name: "invalid Height",
 			cfg: RecorderConfig{
-				SiteURL:   "http://localhost:8065",
-				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
-				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
-				Width:     1280,
+				SiteURL:     "http://localhost:8065",
+				CallID:      "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+				RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
+				AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
+				Width:       1280,
 			},
 			expectedError: "Height value is not valid",
 		},
 		{
 			name: "invalid VideoRate",
 			cfg: RecorderConfig{
-				SiteURL:   "http://localhost:8065",
-				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
-				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
-				Width:     1280,
-				Height:    720,
+				SiteURL:     "http://localhost:8065",
+				CallID:      "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+				RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
+				AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
+				Width:       1280,
+				Height:      720,
 			},
 			expectedError: "VideoRate value is not valid",
 		},
 		{
 			name: "invalid AudioRate",
 			cfg: RecorderConfig{
-				SiteURL:   "http://localhost:8065",
-				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
-				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
-				Width:     1280,
-				Height:    720,
-				VideoRate: 1000,
+				SiteURL:     "http://localhost:8065",
+				CallID:      "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+				RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
+				AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
+				Width:       1280,
+				Height:      720,
+				VideoRate:   1000,
 			},
 			expectedError: "AudioRate value is not valid",
 		},
 		{
 			name: "invalid FrameRate",
 			cfg: RecorderConfig{
-				SiteURL:   "http://localhost:8065",
-				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
-				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
-				Width:     1280,
-				Height:    720,
-				VideoRate: 1000,
-				AudioRate: 64,
+				SiteURL:     "http://localhost:8065",
+				CallID:      "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+				RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
+				AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
+				Width:       1280,
+				Height:      720,
+				VideoRate:   1000,
+				AudioRate:   64,
 			},
 			expectedError: "FrameRate value is not valid",
 		},
@@ -116,6 +132,7 @@ func TestConfigIsValid(t *testing.T) {
 				SiteURL:      "http://localhost:8065",
 				CallID:       "8w8jorhr7j83uqr6y1st894hqe",
 				ThreadID:     "udzdsg7dwidbzcidx5khrf8nee",
+				RecordingID:  "67t5u6cmtfbb7jug739d43xa9e",
 				AuthToken:    "qj75unbsef83ik9p7ueypb6iyw",
 				Width:        1280,
 				Height:       720,
@@ -129,15 +146,16 @@ func TestConfigIsValid(t *testing.T) {
 		{
 			name: "invalid format",
 			cfg: RecorderConfig{
-				SiteURL:   "http://localhost:8065",
-				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
-				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
-				Width:     1280,
-				Height:    720,
-				VideoRate: 1000,
-				AudioRate: 64,
-				FrameRate: 30,
+				SiteURL:     "http://localhost:8065",
+				CallID:      "8w8jorhr7j83uqr6y1st894hqe",
+				ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+				RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
+				AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
+				Width:       1280,
+				Height:      720,
+				VideoRate:   1000,
+				AudioRate:   64,
+				FrameRate:   30,
 			},
 			expectedError: "OutputFormat value is not valid",
 		},
@@ -147,6 +165,7 @@ func TestConfigIsValid(t *testing.T) {
 				SiteURL:      "http://localhost:8065",
 				CallID:       "8w8jorhr7j83uqr6y1st894hqe",
 				ThreadID:     "udzdsg7dwidbzcidx5khrf8nee",
+				RecordingID:  "67t5u6cmtfbb7jug739d43xa9e",
 				AuthToken:    "qj75unbsef83ik9p7ueypb6iyw",
 				Width:        1280,
 				Height:       720,
@@ -250,6 +269,8 @@ func TestLoadFromEnv(t *testing.T) {
 		defer os.Unsetenv("CALL_ID")
 		os.Setenv("THREAD_ID", "udzdsg7dwidbzcidx5khrf8nee")
 		defer os.Unsetenv("THREAD_ID")
+		os.Setenv("RECORDING_ID", "67t5u6cmtfbb7jug739d43xa9e")
+		defer os.Unsetenv("RECORDING_ID")
 		os.Setenv("AUTH_TOKEN", "qj75unbsef83ik9p7ueypb6iyw")
 		defer os.Unsetenv("AUTH_TOKEN")
 		os.Setenv("WIDTH", "1920")
@@ -271,6 +292,7 @@ func TestLoadFromEnv(t *testing.T) {
 			SiteURL:     "http://localhost:8065",
 			CallID:      "8w8jorhr7j83uqr6y1st894hqe",
 			ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+			RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
 			AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
 			Width:       1920,
 			Height:      1080,
@@ -286,13 +308,15 @@ func TestRecorderConfigToEnv(t *testing.T) {
 	var cfg RecorderConfig
 	cfg.SiteURL = "http://localhost:8065"
 	cfg.CallID = "8w8jorhr7j83uqr6y1st894hqe"
-	cfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
 	cfg.ThreadID = "udzdsg7dwidbzcidx5khrf8nee"
+	cfg.RecordingID = "67t5u6cmtfbb7jug739d43xa9e"
+	cfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
 	cfg.SetDefaults()
 	require.Equal(t, []string{
 		"SITE_URL=http://localhost:8065",
 		"CALL_ID=8w8jorhr7j83uqr6y1st894hqe",
 		"THREAD_ID=udzdsg7dwidbzcidx5khrf8nee",
+		"RECORDING_ID=67t5u6cmtfbb7jug739d43xa9e",
 		"AUTH_TOKEN=qj75unbsef83ik9p7ueypb6iyw",
 		"WIDTH=1920",
 		"HEIGHT=1080",
@@ -308,8 +332,9 @@ func TestRecorderConfigMap(t *testing.T) {
 	var cfg RecorderConfig
 	cfg.SiteURL = "http://localhost:8065"
 	cfg.CallID = "8w8jorhr7j83uqr6y1st894hqe"
-	cfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
 	cfg.ThreadID = "udzdsg7dwidbzcidx5khrf8nee"
+	cfg.RecordingID = "67t5u6cmtfbb7jug739d43xa9e"
+	cfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
 	cfg.SetDefaults()
 
 	t.Run("default config", func(t *testing.T) {

@@ -253,8 +253,8 @@ func (rec *Recorder) Start() error {
 		return fmt.Errorf("failed to marshal data: %s", err)
 	}
 
-	recURL := fmt.Sprintf("%s/plugins/%s/standalone/recording.html?call_id=%s#%s",
-		rec.cfg.SiteURL, pluginID, rec.cfg.CallID, base64.URLEncoding.EncodeToString(data))
+	recURL := fmt.Sprintf("%s/plugins/%s/standalone/recording.html?call_id=%s&job_id=%s#%s",
+		rec.cfg.SiteURL, pluginID, rec.cfg.CallID, rec.cfg.RecordingID, base64.URLEncoding.EncodeToString(data))
 
 	go func() {
 		if err := rec.runBrowser(recURL); err != nil {
