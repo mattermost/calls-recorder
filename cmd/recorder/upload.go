@@ -48,7 +48,7 @@ func (rec *Recorder) uploadRecording() error {
 	defer cancelCtx()
 	resp, err := client.DoAPIRequestBytes(ctx, http.MethodPost, apiURL+"/uploads", payload, "")
 	if err != nil {
-		return fmt.Errorf("failed to create upload (%d): %w", resp.StatusCode, err)
+		return fmt.Errorf("failed to create upload: %w", err)
 	}
 	defer resp.Body.Close()
 	cancelCtx()
@@ -61,7 +61,7 @@ func (rec *Recorder) uploadRecording() error {
 	defer cancelCtx()
 	resp, err = client.DoAPIRequestReader(ctx, http.MethodPost, apiURL+"/uploads/"+us.Id, file, nil)
 	if err != nil {
-		return fmt.Errorf("failed to upload data (%d): %w", resp.StatusCode, err)
+		return fmt.Errorf("failed to upload data: %w", err)
 	}
 	defer resp.Body.Close()
 	cancelCtx()
@@ -86,7 +86,7 @@ func (rec *Recorder) uploadRecording() error {
 	defer cancelCtx()
 	resp, err = client.DoAPIRequestBytes(ctx, http.MethodPost, url, payload, "")
 	if err != nil {
-		return fmt.Errorf("failed to save recording (%d): %w", resp.StatusCode, err)
+		return fmt.Errorf("failed to save recording: %w", err)
 	}
 	defer resp.Body.Close()
 
