@@ -60,6 +60,9 @@ RECORDER_USER=calls
 
 # Give permission to write recording files.
 chown -R $RECORDER_USER:$RECORDER_USER /recs
+# Create necessary Chromium crash dump directory.
+mkdir -p /home/$RECORDER_USER/.config/chromium/Crash\ Reports/pending/
+chown -R $RECORDER_USER:$RECORDER_USER /home/$RECORDER_USER
 
 # Turn off trace flag so that we avoid logging all the env variables.
 set +x
