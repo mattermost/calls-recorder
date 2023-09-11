@@ -59,7 +59,7 @@ trap 'kill ${!}; term_handler' SIGTERM
 RECORDER_USER=calls
 
 # Give permission to write recording files.
-chown -R $RECORDER_USER:$RECORDER_USER /recs
+chown -R $RECORDER_USER:$RECORDER_USER /data
 # Give permissions to home directory so that Chromium can create any
 # necessary files and directories.
 chown -R $RECORDER_USER:$RECORDER_USER /home/$RECORDER_USER

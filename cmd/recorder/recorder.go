@@ -28,6 +28,7 @@ const (
 	uploadRetryAttemptWaitTime = 5 * time.Second
 	initPollInterval           = 250 * time.Millisecond
 	connCheckInterval          = 1 * time.Second
+	dataDir                    = "/data"
 )
 
 type Recorder struct {
@@ -271,7 +272,7 @@ func (rec *Recorder) Start() error {
 	log.Printf("browser connected, ready to record")
 
 	filename := fmt.Sprintf("%s-%s.mp4", rec.cfg.CallID, time.Now().UTC().Format("2006-01-02-15_04_05"))
-	rec.outPath = filepath.Join("/recs", filename)
+	rec.outPath = filepath.Join(dataDir, filename)
 	err = rec.runTranscoder(rec.outPath)
 	if err != nil {
 		return fmt.Errorf("failed to run transcoder: %s", err)

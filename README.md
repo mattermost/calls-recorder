@@ -25,7 +25,7 @@ docker pull mattermost/calls-recorder:latest
 ### Run the container
 
 ```
-docker run --network=host --name calls-recorder -e "SITE_URL=http://127.0.0.1:8065/" -e "AUTH_TOKEN=ohqd1phqtt8m3gsfg8j5ymymqy" -e "CALL_ID=9c86b3q57fgfpqr8jq3b9yjweh" -e "THREAD_ID=e4pdmi6rqpn7pp9sity9hiza3r" -e "DEV_MODE=true" -v calls-recorder-volume:/recs mattermost/calls-recorder
+docker run --network=host --name calls-recorder -e "SITE_URL=http://127.0.0.1:8065/" -e "AUTH_TOKEN=ohqd1phqtt8m3gsfg8j5ymymqy" -e "CALL_ID=9c86b3q57fgfpqr8jq3b9yjweh" -e "THREAD_ID=e4pdmi6rqpn7pp9sity9hiza3r" -e "DEV_MODE=true" -v calls-recorder-volume:/data mattermost/calls-recorder
 ```
 
 > **_Note_** 
