@@ -175,6 +175,10 @@ func (cfg *RecorderConfig) SetDefaults() {
 }
 
 func (cfg RecorderConfig) ToEnv() []string {
+	if cfg == (RecorderConfig{}) {
+		return nil
+	}
+
 	return []string{
 		fmt.Sprintf("SITE_URL=%s", cfg.SiteURL),
 		fmt.Sprintf("CALL_ID=%s", cfg.CallID),
@@ -192,6 +196,10 @@ func (cfg RecorderConfig) ToEnv() []string {
 }
 
 func (cfg RecorderConfig) ToMap() map[string]any {
+	if cfg == (RecorderConfig{}) {
+		return nil
+	}
+
 	return map[string]any{
 		"site_url":      cfg.SiteURL,
 		"call_id":       cfg.CallID,
