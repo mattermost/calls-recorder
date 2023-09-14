@@ -7,6 +7,7 @@ require (
 	github.com/chromedp/chromedp v0.9.2
 	github.com/mattermost/mattermost/server/public v0.0.0-20230613002302-62a3ee8adcb5
 	github.com/stretchr/testify v1.8.2
+	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c
 )
 
 require (

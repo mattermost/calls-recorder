@@ -4,14 +4,20 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
+
+	"golang.org/x/time/rate"
 
 	"github.com/mattermost/calls-recorder/cmd/recorder/config"
 
@@ -31,15 +37,29 @@ const (
 	dataDir                    = "/data"
 )
 
+const (
+	transcoderStartTimeout       = 5 * time.Second
+	transcoderStatsPeriod        = 100 * time.Millisecond
+	transcoderProgressSocketPath = "/tmp/progress.sock"
+	transcoderProgressBufferSize = 8192
+	transcoderProgressLogFreq    = 2 * time.Second
+)
+
 type Recorder struct {
 	cfg config.RecorderConfig
 
+	// browser
 	readyCh   chan struct{}
 	stopCh    chan struct{}
 	stoppedCh chan struct{}
 
+	// display server
 	displayServer *exec.Cmd
-	transcoder    *exec.Cmd
+
+	// transcoder
+	transcoder          *exec.Cmd
+	transcoderStartedCh chan struct{}
+	transcoderStoppedCh chan struct{}
 
 	outPath string
 }
@@ -181,6 +201,13 @@ func (rec *Recorder) runBrowser(recURL string) error {
 				return nil
 			}
 			continue
+		case <-rec.transcoderStartedCh:
+			if err := chromedp.Run(ctx,
+				chromedp.Evaluate("window.callsClient?.ws?.send('job_started');", nil),
+			); err != nil {
+				return fmt.Errorf("failed to send job started event: %w", err)
+			}
+			continue
 		}
 		break
 	}
@@ -201,7 +228,58 @@ func (rec *Recorder) runBrowser(recURL string) error {
 }
 
 func (rec *Recorder) runTranscoder(dst string) error {
-	args := fmt.Sprintf(`-y -thread_queue_size 4096 -f alsa -i default -r %d -thread_queue_size 4096 -f x11grab -draw_mouse 0 -s %dx%d -i :%d -c:v h264 -preset %s -vf format=yuv420p -b:v %dk -b:a %dk -movflags +faststart %s`,
+	ln, err := net.Listen("unix", transcoderProgressSocketPath)
+	if err != nil {
+		return fmt.Errorf("failed to listen on progress socket: %w", err)
+	}
+
+	log.Printf("listening on progress socket at %s", ln.Addr())
+
+	startedCh := make(chan struct{})
+	go func() {
+		defer func() {
+			if err := ln.Close(); err != nil {
+				log.Printf("failed to close listener: %s", err)
+			}
+			close(rec.transcoderStoppedCh)
+		}()
+
+		conn, err := ln.Accept()
+		if err != nil {
+			log.Printf("failed to accept connection on progress socket: %s", err)
+			return
+		}
+
+		log.Printf("accepted connection on progress socket")
+
+		var once sync.Once
+		limiter := rate.NewLimiter(rate.Every(transcoderProgressLogFreq), 1)
+		buf := make([]byte, transcoderProgressBufferSize)
+		for {
+			n, err := conn.Read(buf)
+			if err != nil {
+				if !errors.Is(err, io.EOF) {
+					log.Printf("failed to read from conn: %s", err)
+				}
+				break
+			}
+
+			once.Do(func() {
+				// We signal the browser side that transcoding has begun.
+				rec.transcoderStartedCh <- struct{}{}
+
+				close(startedCh)
+			})
+
+			if limiter.Allow() {
+				log.Printf("ffmpeg progress:\n%s\n", string(buf[:n]))
+			}
+		}
+	}()
+
+	args := fmt.Sprintf(`-nostats -stats_period %0.2f -progress unix://%s -y -thread_queue_size 4096 -f alsa -i default -r %d -thread_queue_size 4096 -f x11grab -draw_mouse 0 -s %dx%d -i :%d -c:v h264 -preset %s -vf format=yuv420p -b:v %dk -b:a %dk -movflags +faststart %s`,
+		transcoderStatsPeriod.Seconds(),
+		ln.Addr(),
 		rec.cfg.FrameRate,
 		rec.cfg.Width,
 		rec.cfg.Height,
@@ -214,10 +292,16 @@ func (rec *Recorder) runTranscoder(dst string) error {
 
 	cmd, err := runCmd("ffmpeg", args)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to run ffmpeg: %w", err)
 	}
 
 	rec.transcoder = cmd
+
+	select {
+	case <-startedCh:
+	case <-time.After(transcoderStartTimeout):
+		return fmt.Errorf("timed out waiting for transcoder to start")
+	}
 
 	return nil
 }
@@ -233,10 +317,12 @@ func NewRecorder(cfg config.RecorderConfig) (*Recorder, error) {
 	}
 
 	return &Recorder{
-		cfg:       cfg,
-		readyCh:   make(chan struct{}),
-		stopCh:    make(chan struct{}),
-		stoppedCh: make(chan struct{}),
+		cfg:                 cfg,
+		readyCh:             make(chan struct{}),
+		stopCh:              make(chan struct{}),
+		stoppedCh:           make(chan struct{}),
+		transcoderStartedCh: make(chan struct{}),
+		transcoderStoppedCh: make(chan struct{}),
 	}, nil
 }
 
@@ -272,33 +358,52 @@ func (rec *Recorder) Start() error {
 	log.Printf("browser connected, ready to record")
 
 	filename := fmt.Sprintf("%s-%s.mp4", rec.cfg.CallID, time.Now().UTC().Format("2006-01-02-15_04_05"))
-	rec.outPath = filepath.Join(dataDir, filename)
+	rec.outPath = filepath.Join(getDataDir(), filename)
 	err = rec.runTranscoder(rec.outPath)
 	if err != nil {
 		return fmt.Errorf("failed to run transcoder: %s", err)
 	}
 
+	log.Printf("transcoder started at %v", time.Now().UnixMilli())
+
 	return nil
 }
 
 func (rec *Recorder) Stop() error {
-	if err := rec.transcoder.Process.Signal(syscall.SIGTERM); err != nil {
-		log.Printf("failed to send signal: %s", err.Error())
-	}
-	if err := rec.transcoder.Wait(); err != nil {
-		log.Printf("failed waiting for transcoder to exit: %s", err)
+	if rec.transcoder != nil {
+		log.Printf("stopping transcoder")
+		if err := rec.transcoder.Process.Signal(syscall.SIGTERM); err != nil {
+			log.Printf("failed to send signal: %s", err)
+		}
+		if err := rec.transcoder.Wait(); err != nil {
+			log.Printf("failed waiting for transcoder to exit: %s", err)
+		}
+		<-rec.transcoderStoppedCh
+		rec.transcoder = nil
 	}
 
 	close(rec.stopCh)
 
+	var exitErr error
 	select {
 	case <-rec.stoppedCh:
 	case <-time.After(stopTimeout):
-		return fmt.Errorf("timed out waiting for stopped event")
+		exitErr = fmt.Errorf("timed out waiting for stopped event")
 	}
 
-	if err := rec.displayServer.Process.Kill(); err != nil {
-		log.Printf("failed to stop display process: %s", err)
+	if rec.displayServer != nil {
+		log.Printf("stopping display server")
+		if err := rec.displayServer.Process.Signal(syscall.SIGTERM); err != nil {
+			log.Printf("failed to send signal: %s", err)
+		}
+		if err := rec.displayServer.Wait(); err != nil {
+			log.Printf("failed waiting for display server to exit: %s", err)
+		}
+		rec.displayServer = nil
+	}
+
+	if exitErr != nil {
+		return exitErr
 	}
 
 	// TODO (MM-48546): implement better retry logic.

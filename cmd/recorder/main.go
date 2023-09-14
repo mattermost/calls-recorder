@@ -29,10 +29,15 @@ func main() {
 		log.Fatalf("failed to create recorder: %s", err)
 	}
 
-	log.Printf("starting recordinig")
+	log.Printf("starting recording")
 
 	if err := recorder.Start(); err != nil {
-		log.Fatalf("failed to start recording: %s", err)
+		log.Printf("failed to start recording: %s", err)
+		// cleaning up
+		if err := recorder.Stop(); err != nil {
+			log.Printf("failed to stop recorder: %s", err)
+		}
+		os.Exit(1)
 	}
 
 	log.Printf("recording has started")
