@@ -223,7 +223,7 @@ func (rec *Recorder) runTranscoder(dst string) error {
 }
 
 func runDisplayServer(width, height int) (*exec.Cmd, error) {
-	args := fmt.Sprintf(`:%d -screen 0 %dx%dx24 -dpi 96`, displayID, width, height)
+	args := fmt.Sprintf(`:%d -screen 0 %dx%dx24 -dpi 96 -nolisten tcp -nolisten unix`, displayID, width, height)
 	return runCmd("Xvfb", args)
 }
 
