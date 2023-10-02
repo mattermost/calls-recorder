@@ -9,13 +9,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/mattermost/calls-recorder/cmd/recorder/config"
 
-	"github.com/chromedp/cdproto/runtime"
+	cruntime "github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 )
 
@@ -101,12 +102,12 @@ func (rec *Recorder) runBrowser(recURL string) error {
 
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		switch ev := ev.(type) {
-		case *runtime.EventExceptionThrown:
+		case *cruntime.EventExceptionThrown:
 			log.Printf("chrome exception: %s", ev.ExceptionDetails.Text)
 			if ev.ExceptionDetails.Exception != nil {
 				log.Printf("chrome exception: %s", ev.ExceptionDetails.Exception.Description)
 			}
-		case *runtime.EventConsoleAPICalled:
+		case *cruntime.EventConsoleAPICalled:
 			args := make([]string, 0, len(ev.Args))
 			for _, arg := range ev.Args {
 				var val interface{}
@@ -222,7 +223,7 @@ func (rec *Recorder) runTranscoder(dst string) error {
 }
 
 func runDisplayServer(width, height int) (*exec.Cmd, error) {
-	args := fmt.Sprintf(`:%d -screen 0 %dx%dx24 -dpi 96`, displayID, width, height)
+	args := fmt.Sprintf(`:%d -screen 0 %dx%dx24 -dpi 96 -nolisten tcp -nolisten unix`, displayID, width, height)
 	return runCmd("Xvfb", args)
 }
 
@@ -240,6 +241,16 @@ func NewRecorder(cfg config.RecorderConfig) (*Recorder, error) {
 }
 
 func (rec *Recorder) Start() error {
+	// Verify that the required sysctl is set.
+	if runtime.GOOS == "linux" {
+		if data, err := os.ReadFile("/proc/sys/kernel/unprivileged_userns_clone"); err != nil {
+			return fmt.Errorf("failed to read sysctl: %w", err)
+		} else if strings.TrimSpace(string(data)) != "1" {
+			return fmt.Errorf("kernel.unprivileged_userns_clone should be enabled for the recording process to work")
+		}
+		log.Printf("kernel.unprivileged_userns_clone is correctly set")
+	}
+
 	var err error
 	rec.displayServer, err = runDisplayServer(rec.cfg.Width, rec.cfg.Height)
 	if err != nil {
