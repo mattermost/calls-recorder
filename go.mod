@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/chromedp/cdproto v0.0.0-20230828023241-f357fd93b5d6
 	github.com/chromedp/chromedp v0.9.2
+	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.1
 	github.com/mattermost/mattermost/server/public v0.0.0-20230613002302-62a3ee8adcb5
 	github.com/stretchr/testify v1.8.2
 )

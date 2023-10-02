@@ -16,6 +16,8 @@ import (
 
 	"github.com/mattermost/calls-recorder/cmd/recorder/config"
 
+	"github.com/mattermost/mattermost/server/public/model"
+
 	cruntime "github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 )
@@ -40,6 +42,8 @@ type Recorder struct {
 
 	displayServer *exec.Cmd
 	transcoder    *exec.Cmd
+
+	client *model.Client4
 
 	outPath string
 }
@@ -232,11 +236,15 @@ func NewRecorder(cfg config.RecorderConfig) (*Recorder, error) {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
+	client := model.NewAPIv4Client(cfg.SiteURL)
+	client.SetToken(cfg.AuthToken)
+
 	return &Recorder{
 		cfg:       cfg,
 		readyCh:   make(chan struct{}),
 		stopCh:    make(chan struct{}),
 		stoppedCh: make(chan struct{}),
+		client:    client,
 	}, nil
 }
 

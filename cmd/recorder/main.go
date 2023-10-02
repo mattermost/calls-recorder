@@ -32,6 +32,9 @@ func main() {
 	log.Printf("starting recordinig")
 
 	if err := recorder.Start(); err != nil {
+		if err := recorder.ReportJobFailure(err.Error()); err != nil {
+			log.Printf("failed to report job failure: %s", err.Error())
+		}
 		log.Fatalf("failed to start recording: %s", err)
 	}
 
