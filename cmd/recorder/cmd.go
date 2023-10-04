@@ -2,7 +2,7 @@ package main
 
 import (
 	"io"
-	"log"
+	"log/slog"
 	"os/exec"
 	"strings"
 )
@@ -12,7 +12,7 @@ const (
 )
 
 func runCmd(cmd string, args string) (*exec.Cmd, error) {
-	log.Printf("running %s: %q", cmd, args)
+	slog.Debug("running cmd", slog.String("cmd", cmd), slog.String("args", args))
 	c := exec.Command(cmd, strings.Split(args, " ")...)
 
 	stdout, err := c.StdoutPipe()
@@ -37,10 +37,17 @@ func runCmd(cmd string, args string) (*exec.Cmd, error) {
 				return
 			}
 			if err != nil {
-				log.Printf("%s (%s): error reading: %s", cmd, name, err)
+				slog.Debug("error reading log buffer",
+					slog.String("cmd", cmd),
+					slog.String("name", name),
+					slog.String("err", err.Error()),
+				)
 				return
 			}
-			log.Printf("%s (%s): %s", cmd, name, strings.TrimSuffix(string(buf[:n]), "\n"))
+			slog.Debug(strings.TrimSuffix(string(buf[:n]), "\n"),
+				slog.String("cmd", cmd),
+				slog.String("name", name),
+			)
 		}
 	}
 
