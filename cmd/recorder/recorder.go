@@ -307,6 +307,10 @@ func (rec *Recorder) Start() error {
 		return fmt.Errorf("failed to run transcoder: %s", err)
 	}
 
+	if err := rec.ReportJobStarted(); err != nil {
+		return fmt.Errorf("failed to report job started status: %w", err)
+	}
+
 	return nil
 }
 

@@ -9,15 +9,11 @@ import (
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
 )
 
-func (rec *Recorder) ReportJobFailure(errMsg string) error {
+func (rec *Recorder) postJobStatus(status public.JobStatus) error {
 	apiURL := fmt.Sprintf("%s/plugins/%s/bot/calls/%s/jobs/%s/status",
 		rec.client.URL, pluginID, rec.cfg.CallID, rec.cfg.RecordingID)
 
-	payload, err := json.Marshal(&public.JobStatus{
-		JobType: public.JobTypeRecording,
-		Status:  public.JobStatusTypeFailed,
-		Error:   errMsg,
-	})
+	payload, err := json.Marshal(&status)
 	if err != nil {
 		return fmt.Errorf("failed to marshal: %w", err)
 	}
@@ -32,4 +28,19 @@ func (rec *Recorder) ReportJobFailure(errMsg string) error {
 	cancelCtx()
 
 	return nil
+}
+
+func (rec *Recorder) ReportJobFailure(errMsg string) error {
+	return rec.postJobStatus(public.JobStatus{
+		JobType: public.JobTypeRecording,
+		Status:  public.JobStatusTypeFailed,
+		Error:   errMsg,
+	})
+}
+
+func (rec *Recorder) ReportJobStarted() error {
+	return rec.postJobStatus(public.JobStatus{
+		JobType: public.JobTypeRecording,
+		Status:  public.JobStatusTypeStarted,
+	})
 }
