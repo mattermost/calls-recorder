@@ -50,7 +50,7 @@ DOCKER_USER             ?= user
 DOCKER_PASSWORD         ?= password
 ## Docker Images
 DOCKER_IMAGE_GO         += "golang:${GO_VERSION}@sha256:b17c35044f4062d83c815434615997eed97697daae8745c6dd39dc3673b87efb"
-DOCKER_IMAGE_GOLINT     += "golangci/golangci-lint:v1.50.1@sha256:94388e00f07c64262b138a7508f857473e30fdf0f59d04b546a305fc12cb5961"
+DOCKER_IMAGE_GOLINT     += "golangci/golangci-lint:v1.54.2@sha256:abe731fe6bb335a30eab303a41dd5c2b630bb174372a4da08e3d42eab5324127"
 DOCKER_IMAGE_DOCKERLINT += "hadolint/hadolint:v2.9.2@sha256:d355bd7df747a0f124f3b5e7b21e9dafd0cb19732a276f901f0fdee243ec1f3b"
 DOCKER_IMAGE_COSIGN     += "bitnami/cosign:1.8.0@sha256:8c2c61c546258fffff18b47bb82a65af6142007306b737129a7bd5429d53629a"
 DOCKER_IMAGE_GH_CLI     += "registry.internal.mattermost.com/images/build-ci:3.16.0@sha256:f6a229a9ababef3c483f237805ee4c3dbfb63f5de4fbbf58f4c4b6ed8fcd34b6"
