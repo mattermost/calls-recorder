@@ -29,7 +29,6 @@ const (
 	stopTimeout                = 10 * time.Second
 	maxUploadRetryAttempts     = 5
 	uploadRetryAttemptWaitTime = 5 * time.Second
-	initPollInterval           = 250 * time.Millisecond
 	connCheckInterval          = 1 * time.Second
 )
 
@@ -135,20 +134,7 @@ func (rec *Recorder) runBrowser(recURL string) error {
 		}
 	})
 
-	var connected bool
-	connectCheckExpr := "window.callsClient && window.callsClient.connected && !window.callsClient.closed"
-	if err := chromedp.Run(ctx,
-		chromedp.Navigate(recURL),
-		chromedp.Poll(connectCheckExpr, &connected, chromedp.WithPollingInterval(initPollInterval)),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			if connected {
-				log.Printf("connected to call")
-				close(rec.readyCh)
-				return nil
-			}
-			return fmt.Errorf("connectivity check failed")
-		}),
-	); err != nil {
+	if err := chromedp.Run(ctx, chromedp.Navigate(recURL)); err != nil {
 		return fmt.Errorf("failed to run chromedp: %w", err)
 	}
 
@@ -162,11 +148,36 @@ func (rec *Recorder) runBrowser(recURL string) error {
 		close(rec.stoppedCh)
 	}()
 
-	var disconnected bool
-	disconnectCheckExpr := "!window.callsClient || window.callsClient.closed"
-
 	ticker := time.NewTicker(connCheckInterval)
 	defer ticker.Stop()
+
+	var connected bool
+	connectCheckExpr := "window.callsClient && window.callsClient.connected && !window.callsClient.closed"
+	for {
+		select {
+		case <-rec.stopCh:
+			log.Printf("stop signal received, shutting down browser")
+			return nil
+		case <-ticker.C:
+			if err := chromedp.Run(ctx,
+				chromedp.Evaluate(connectCheckExpr, &connected),
+			); err != nil {
+				log.Printf("failed to run chromedp: %s", err)
+				continue
+			}
+			if !connected {
+				log.Printf("not connected to call yet")
+				continue
+			}
+
+			log.Printf("connected to call")
+			close(rec.readyCh)
+		}
+		break
+	}
+
+	var disconnected bool
+	disconnectCheckExpr := "!window.callsClient || window.callsClient.closed"
 	for {
 		select {
 		case <-rec.stopCh:
