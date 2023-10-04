@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/mattermost/calls-recorder/cmd/recorder/config"
+
+	"github.com/mattermost/mattermost/server/public/model"
 
 	cruntime "github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
@@ -27,7 +29,6 @@ const (
 	stopTimeout                = 10 * time.Second
 	maxUploadRetryAttempts     = 5
 	uploadRetryAttemptWaitTime = 5 * time.Second
-	initPollInterval           = 250 * time.Millisecond
 	connCheckInterval          = 1 * time.Second
 )
 
@@ -40,6 +41,8 @@ type Recorder struct {
 
 	displayServer *exec.Cmd
 	transcoder    *exec.Cmd
+
+	client *model.Client4
 
 	outPath string
 }
@@ -87,14 +90,14 @@ func (rec *Recorder) runBrowser(recURL string) error {
 	}
 
 	contextOpts := []chromedp.ContextOption{
-		chromedp.WithErrorf(log.Printf),
+		chromedp.WithErrorf(slogDebugF),
 	}
 	if devMode := os.Getenv("DEV_MODE"); devMode == "true" {
 		opts = append(opts, chromedp.Flag("unsafely-treat-insecure-origin-as-secure",
 			"http://172.17.0.1:8065,http://host.docker.internal:8065,http://mm-server:8065,http://host.minikube.internal:8065"))
 		opts = append(opts, chromedp.NoSandbox)
-		contextOpts = append(contextOpts, chromedp.WithLogf(log.Printf))
-		contextOpts = append(contextOpts, chromedp.WithDebugf(log.Printf))
+		contextOpts = append(contextOpts, chromedp.WithLogf(slogDebugF))
+		contextOpts = append(contextOpts, chromedp.WithDebugf(slogDebugF))
 	}
 
 	allocCtx, _ := chromedp.NewExecAllocator(context.Background(), opts...)
@@ -103,9 +106,9 @@ func (rec *Recorder) runBrowser(recURL string) error {
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		switch ev := ev.(type) {
 		case *cruntime.EventExceptionThrown:
-			log.Printf("chrome exception: %s", ev.ExceptionDetails.Text)
+			slog.Error("chrome exception", slog.String("err", ev.ExceptionDetails.Text))
 			if ev.ExceptionDetails.Exception != nil {
-				log.Printf("chrome exception: %s", ev.ExceptionDetails.Exception.Description)
+				slog.Error("chrome exception", slog.String("err", ev.ExceptionDetails.Exception.Description))
 			}
 		case *cruntime.EventConsoleAPICalled:
 			args := make([]string, 0, len(ev.Args))
@@ -115,7 +118,7 @@ func (rec *Recorder) runBrowser(recURL string) error {
 				if len(arg.Value) > 0 {
 					err := json.Unmarshal(arg.Value, &val)
 					if err != nil {
-						log.Printf("failed to unmarshal: %s", err)
+						slog.Error("failed to unmarshal", slog.String("err", err.Error()))
 						continue
 					}
 					str = fmt.Sprintf("%+v", val)
@@ -127,24 +130,11 @@ func (rec *Recorder) runBrowser(recURL string) error {
 
 			str := fmt.Sprintf("chrome console %s %s", ev.Type.String(), strings.Join(args, " "))
 
-			log.Printf(sanitizeConsoleLog(str))
+			slog.Debug(sanitizeConsoleLog(str))
 		}
 	})
 
-	var connected bool
-	connectCheckExpr := "window.callsClient && window.callsClient.connected && !window.callsClient.closed"
-	if err := chromedp.Run(ctx,
-		chromedp.Navigate(recURL),
-		chromedp.Poll(connectCheckExpr, &connected, chromedp.WithPollingInterval(initPollInterval)),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			if connected {
-				log.Printf("connected to call")
-				close(rec.readyCh)
-				return nil
-			}
-			return fmt.Errorf("connectivity check failed")
-		}),
-	); err != nil {
+	if err := chromedp.Run(ctx, chromedp.Navigate(recURL)); err != nil {
 		return fmt.Errorf("failed to run chromedp: %w", err)
 	}
 
@@ -152,31 +142,56 @@ func (rec *Recorder) runBrowser(recURL string) error {
 		tctx, cancelCtx := context.WithTimeout(ctx, stopTimeout)
 		// graceful cancel
 		if err := chromedp.Cancel(tctx); err != nil {
-			log.Printf("failed to cancel context: %s", err)
+			slog.Error("failed to cancel context", slog.String("err", err.Error()))
 		}
 		cancelCtx()
 		close(rec.stoppedCh)
 	}()
 
-	var disconnected bool
-	disconnectCheckExpr := "!window.callsClient || window.callsClient.closed"
-
 	ticker := time.NewTicker(connCheckInterval)
 	defer ticker.Stop()
+
+	var connected bool
+	connectCheckExpr := "window.callsClient && window.callsClient.connected && !window.callsClient.closed"
 	for {
 		select {
 		case <-rec.stopCh:
-			log.Printf("stop signal received, shutting down browser")
+			slog.Info("stop signal received, shutting down browser")
+			return nil
+		case <-ticker.C:
+			if err := chromedp.Run(ctx,
+				chromedp.Evaluate(connectCheckExpr, &connected),
+			); err != nil {
+				slog.Error("failed to run chromedp", slog.String("err", err.Error()))
+				continue
+			}
+			if !connected {
+				slog.Debug("not connected to call yet")
+				continue
+			}
+
+			slog.Debug("connected to call")
+			close(rec.readyCh)
+		}
+		break
+	}
+
+	var disconnected bool
+	disconnectCheckExpr := "!window.callsClient || window.callsClient.closed"
+	for {
+		select {
+		case <-rec.stopCh:
+			slog.Info("stop signal received, shutting down browser")
 		case <-ticker.C:
 			if err := chromedp.Run(ctx,
 				chromedp.Evaluate(disconnectCheckExpr, &disconnected),
 			); err != nil {
-				log.Printf("failed to run chromedp: %s", err)
+				slog.Error("failed to run chromedp", slog.String("err", err.Error()))
 			}
 			if disconnected {
-				log.Printf("disconnected from call, shutting down")
+				slog.Info("disconnected from call, shutting down")
 				if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
-					log.Printf("failed to send SIGTERM signal: %s", err)
+					slog.Error("failed to send SIGTERM signal", slog.String("err", err.Error()))
 				}
 				return nil
 			}
@@ -189,12 +204,12 @@ func (rec *Recorder) runBrowser(recURL string) error {
 	if err := chromedp.Run(ctx,
 		chromedp.Evaluate(disconnectExpr+disconnectCheckExpr, &disconnected),
 	); err != nil {
-		log.Printf("failed to run chromedp: %s", err)
+		slog.Error("failed to run chromedp", slog.String("err", err.Error()))
 	}
 	if disconnected {
-		log.Printf("disconnected from call successfully")
+		slog.Info("disconnected from call successfully")
 	} else {
-		log.Printf("failed to disconnect")
+		slog.Error("failed to disconnect")
 	}
 
 	return nil
@@ -214,7 +229,7 @@ func (rec *Recorder) runTranscoder(dst string) error {
 
 	cmd, err := runCmd("ffmpeg", args)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to run transcoder command: %w", err)
 	}
 
 	rec.transcoder = cmd
@@ -232,11 +247,15 @@ func NewRecorder(cfg config.RecorderConfig) (*Recorder, error) {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
+	client := model.NewAPIv4Client(cfg.SiteURL)
+	client.SetToken(cfg.AuthToken)
+
 	return &Recorder{
 		cfg:       cfg,
 		readyCh:   make(chan struct{}),
 		stopCh:    make(chan struct{}),
 		stoppedCh: make(chan struct{}),
+		client:    client,
 	}, nil
 }
 
@@ -248,7 +267,7 @@ func (rec *Recorder) Start() error {
 		} else if strings.TrimSpace(string(data)) != "1" {
 			return fmt.Errorf("kernel.unprivileged_userns_clone should be enabled for the recording process to work")
 		}
-		log.Printf("kernel.unprivileged_userns_clone is correctly set")
+		slog.Debug("kernel.unprivileged_userns_clone is correctly set")
 	}
 
 	var err error
@@ -269,7 +288,7 @@ func (rec *Recorder) Start() error {
 
 	go func() {
 		if err := rec.runBrowser(recURL); err != nil {
-			log.Printf("failed to run browser: %s", err)
+			slog.Error("failed to run browser", slog.String("err", err.Error()))
 		}
 	}()
 
@@ -279,7 +298,7 @@ func (rec *Recorder) Start() error {
 		return fmt.Errorf("timed out waiting for ready event")
 	}
 
-	log.Printf("browser connected, ready to record")
+	slog.Info("browser connected, ready to record")
 
 	filename := fmt.Sprintf("%s-%s.mp4", rec.cfg.CallID, time.Now().UTC().Format("2006-01-02-15_04_05"))
 	rec.outPath = filepath.Join("/recs", filename)
@@ -288,15 +307,19 @@ func (rec *Recorder) Start() error {
 		return fmt.Errorf("failed to run transcoder: %s", err)
 	}
 
+	if err := rec.ReportJobStarted(); err != nil {
+		return fmt.Errorf("failed to report job started status: %w", err)
+	}
+
 	return nil
 }
 
 func (rec *Recorder) Stop() error {
 	if err := rec.transcoder.Process.Signal(syscall.SIGTERM); err != nil {
-		log.Printf("failed to send signal: %s", err.Error())
+		slog.Error("failed to send signal", slog.String("err", err.Error()))
 	}
 	if err := rec.transcoder.Wait(); err != nil {
-		log.Printf("failed waiting for transcoder to exit: %s", err)
+		slog.Error("failed waiting for transcoder to exit", slog.String("err", err.Error()))
 	}
 
 	close(rec.stopCh)
@@ -308,7 +331,7 @@ func (rec *Recorder) Stop() error {
 	}
 
 	if err := rec.displayServer.Process.Kill(); err != nil {
-		log.Printf("failed to stop display process: %s", err)
+		slog.Error("failed to stop display process", slog.String("err", err.Error()))
 	}
 
 	// TODO (MM-48546): implement better retry logic.
@@ -316,7 +339,7 @@ func (rec *Recorder) Stop() error {
 	for {
 		err := rec.uploadRecording()
 		if err == nil {
-			log.Printf("recording uploaded successfully")
+			slog.Info("recording uploaded successfully")
 			break
 		}
 
@@ -325,13 +348,13 @@ func (rec *Recorder) Stop() error {
 		}
 
 		attempt++
-		log.Printf("failed to upload recording: %s", err)
-		log.Printf("retrying in %s", uploadRetryAttemptWaitTime)
+		slog.Info("failed to upload recording", slog.String("err", err.Error()))
+		slog.Info("retrying", slog.Duration("wait_time", uploadRetryAttemptWaitTime))
 		time.Sleep(uploadRetryAttemptWaitTime)
 	}
 
 	if err := os.Remove(rec.outPath); err != nil {
-		log.Printf("failed to remove recording: %s", err)
+		slog.Error("failed to remove recording", slog.String("err", err.Error()))
 	}
 
 	return nil
