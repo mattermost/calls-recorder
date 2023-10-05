@@ -29,9 +29,7 @@ func (rec *Recorder) uploadRecording() error {
 		return fmt.Errorf("failed to stat file: %w", err)
 	}
 
-	client := model.NewAPIv4Client(rec.cfg.SiteURL)
-	client.SetToken(rec.cfg.AuthToken)
-	apiURL := fmt.Sprintf("%s/plugins/%s/bot", client.URL, pluginID)
+	apiURL := fmt.Sprintf("%s/plugins/%s/bot", rec.client.URL, pluginID)
 
 	us := &model.UploadSession{
 		ChannelId: rec.cfg.CallID,
@@ -46,7 +44,7 @@ func (rec *Recorder) uploadRecording() error {
 
 	ctx, cancelCtx := context.WithTimeout(context.Background(), httpRequestTimeout)
 	defer cancelCtx()
-	resp, err := client.DoAPIRequestBytes(ctx, http.MethodPost, apiURL+"/uploads", payload, "")
+	resp, err := rec.client.DoAPIRequestBytes(ctx, http.MethodPost, apiURL+"/uploads", payload, "")
 	if err != nil {
 		return fmt.Errorf("failed to create upload: %w", err)
 	}
@@ -59,7 +57,7 @@ func (rec *Recorder) uploadRecording() error {
 
 	ctx, cancelCtx = context.WithTimeout(context.Background(), httpUploadTimeout)
 	defer cancelCtx()
-	resp, err = client.DoAPIRequestReader(ctx, http.MethodPost, apiURL+"/uploads/"+us.Id, file, nil)
+	resp, err = rec.client.DoAPIRequestReader(ctx, http.MethodPost, apiURL+"/uploads/"+us.Id, file, nil)
 	if err != nil {
 		return fmt.Errorf("failed to upload data: %w", err)
 	}
@@ -84,7 +82,7 @@ func (rec *Recorder) uploadRecording() error {
 	url := fmt.Sprintf("%s/calls/%s/recordings", apiURL, rec.cfg.CallID)
 	ctx, cancelCtx = context.WithTimeout(context.Background(), httpRequestTimeout)
 	defer cancelCtx()
-	resp, err = client.DoAPIRequestBytes(ctx, http.MethodPost, url, payload, "")
+	resp, err = rec.client.DoAPIRequestBytes(ctx, http.MethodPost, url, payload, "")
 	if err != nil {
 		return fmt.Errorf("failed to save recording: %w", err)
 	}

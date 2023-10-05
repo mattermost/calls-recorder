@@ -1,7 +1,7 @@
 # This dockerfile is used to build Mattermost calls-recorder
 # A multi stage build, with golang used as a builder
 # and ubuntu:22.04 as runner
-ARG GO_IMAGE=golang:1.18@sha256:fa71e1447cb0241324162a6c51297206928d755b16142eceec7b809af55061e5
+ARG GO_IMAGE=golang:1.21@sha256:b17c35044f4062d83c815434615997eed97697daae8745c6dd39dc3673b87efb
 ARG ARCH
 ARG RUNNER_IMAGE
 

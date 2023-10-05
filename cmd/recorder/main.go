@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,46 +11,60 @@ import (
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		AddSource:   true,
+		Level:       slog.LevelDebug,
+		ReplaceAttr: slogReplaceAttr,
+	}))
+	slog.SetDefault(logger)
 
 	pid := os.Getpid()
 	if err := os.WriteFile("/tmp/recorder.pid", []byte(fmt.Sprintf("%d", pid)), 0666); err != nil {
-		log.Fatalf("failed to write pid file: %s", err)
+		slog.Error("failed to write pid file", slog.String("err", err.Error()))
+		os.Exit(1)
 	}
 
 	cfg, err := config.LoadFromEnv()
 	if err != nil {
-		log.Fatalf("failed to load config: %s", err)
+		slog.Error("failed to load config", slog.String("err", err.Error()))
+		os.Exit(1)
 	}
 	cfg.SetDefaults()
 
+	slog.SetDefault(logger.With("jobID", cfg.RecordingID))
+
 	recorder, err := NewRecorder(cfg)
 	if err != nil {
-		log.Fatalf("failed to create recorder: %s", err)
+		slog.Error("failed to create recorder", slog.String("err", err.Error()))
+		os.Exit(1)
 	}
 
-	log.Printf("starting recording")
+	slog.Info("starting recording")
 
 	if err := recorder.Start(); err != nil {
-		log.Printf("failed to start recording: %s", err)
+		slog.Error("failed to start recording", slog.String("err", err.Error()))
+		if err := recorder.ReportJobFailure(err.Error()); err != nil {
+			slog.Error("failed to report job failure", slog.String("err", err.Error()))
+		}
 		// cleaning up
 		if err := recorder.Stop(); err != nil {
-			log.Printf("failed to stop recorder: %s", err)
+			slog.Error("failed to stop recorder", slog.String("err", err.Error()))
 		}
 		os.Exit(1)
 	}
 
-	log.Printf("recording has started")
+	slog.Info("recording has started")
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	<-sig
 
-	log.Printf("received SIGTERM, stopping recording")
+	slog.Info("received SIGTERM, stopping recording")
 
 	if err := recorder.Stop(); err != nil {
-		log.Fatalf("failed to stop recording: %s", err)
+		slog.Error("failed to stop recording", slog.String("err", err.Error()))
+		os.Exit(1)
 	}
 
-	log.Printf("recording has finished, exiting")
+	slog.Info("recording has finished, exiting")
 }
