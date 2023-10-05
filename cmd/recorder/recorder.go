@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -260,14 +259,8 @@ func NewRecorder(cfg config.RecorderConfig) (*Recorder, error) {
 }
 
 func (rec *Recorder) Start() error {
-	// Verify that the required sysctl is set.
-	if runtime.GOOS == "linux" {
-		if data, err := os.ReadFile("/proc/sys/kernel/unprivileged_userns_clone"); err != nil {
-			return fmt.Errorf("failed to read sysctl: %w", err)
-		} else if strings.TrimSpace(string(data)) != "1" {
-			return fmt.Errorf("kernel.unprivileged_userns_clone should be enabled for the recording process to work")
-		}
-		slog.Debug("kernel.unprivileged_userns_clone is correctly set")
+	if err := checkOSRequirements(); err != nil {
+		return err
 	}
 
 	var err error
