@@ -36,7 +36,7 @@ type Recorder struct {
 
 	readyCh   chan struct{}
 	stopCh    chan struct{}
-	stoppedCh chan struct{}
+	stoppedCh chan error
 
 	displayServer *exec.Cmd
 	transcoder    *exec.Cmd
@@ -46,7 +46,7 @@ type Recorder struct {
 	outPath string
 }
 
-func (rec *Recorder) runBrowser(recURL string) error {
+func (rec *Recorder) runBrowser(recURL string) (rerr error) {
 	opts := []chromedp.ExecAllocatorOption{
 		chromedp.NoFirstRun,
 		chromedp.NoDefaultBrowserCheck,
@@ -133,10 +133,6 @@ func (rec *Recorder) runBrowser(recURL string) error {
 		}
 	})
 
-	if err := chromedp.Run(ctx, chromedp.Navigate(recURL)); err != nil {
-		return fmt.Errorf("failed to run chromedp: %w", err)
-	}
-
 	defer func() {
 		tctx, cancelCtx := context.WithTimeout(ctx, stopTimeout)
 		// graceful cancel
@@ -144,8 +140,12 @@ func (rec *Recorder) runBrowser(recURL string) error {
 			slog.Error("failed to cancel context", slog.String("err", err.Error()))
 		}
 		cancelCtx()
-		close(rec.stoppedCh)
+		rec.stoppedCh <- rerr
 	}()
+
+	if err := chromedp.Run(ctx, chromedp.Navigate(recURL)); err != nil {
+		return fmt.Errorf("failed to run chromedp: %w", err)
+	}
 
 	ticker := time.NewTicker(connCheckInterval)
 	defer ticker.Stop()
@@ -253,7 +253,7 @@ func NewRecorder(cfg config.RecorderConfig) (*Recorder, error) {
 		cfg:       cfg,
 		readyCh:   make(chan struct{}),
 		stopCh:    make(chan struct{}),
-		stoppedCh: make(chan struct{}),
+		stoppedCh: make(chan error),
 		client:    client,
 	}, nil
 }
@@ -308,23 +308,37 @@ func (rec *Recorder) Start() error {
 }
 
 func (rec *Recorder) Stop() error {
-	if err := rec.transcoder.Process.Signal(syscall.SIGTERM); err != nil {
-		slog.Error("failed to send signal", slog.String("err", err.Error()))
-	}
-	if err := rec.transcoder.Wait(); err != nil {
-		slog.Error("failed waiting for transcoder to exit", slog.String("err", err.Error()))
+	if rec.transcoder != nil {
+		if err := rec.transcoder.Process.Signal(syscall.SIGTERM); err != nil {
+			slog.Error("failed to send signal", slog.String("err", err.Error()))
+		}
+		if err := rec.transcoder.Wait(); err != nil {
+			slog.Error("failed waiting for transcoder to exit", slog.String("err", err.Error()))
+		}
+		rec.transcoder = nil
 	}
 
 	close(rec.stopCh)
 
+	var exitErr error
 	select {
-	case <-rec.stoppedCh:
+	case exitErr = <-rec.stoppedCh:
 	case <-time.After(stopTimeout):
-		return fmt.Errorf("timed out waiting for stopped event")
+		exitErr = fmt.Errorf("timed out waiting for stopped event")
 	}
 
-	if err := rec.displayServer.Process.Kill(); err != nil {
-		slog.Error("failed to stop display process", slog.String("err", err.Error()))
+	if rec.displayServer != nil {
+		if err := rec.displayServer.Process.Signal(syscall.SIGTERM); err != nil {
+			slog.Error("failed to stop display process", slog.String("err", err.Error()))
+		}
+		if err := rec.displayServer.Wait(); err != nil {
+			slog.Error("failed waiting for display server to exit", slog.String("err", err.Error()))
+		}
+		rec.displayServer = nil
+	}
+
+	if exitErr != nil {
+		return exitErr
 	}
 
 	// TODO (MM-48546): implement better retry logic.
