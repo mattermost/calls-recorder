@@ -24,11 +24,13 @@ import (
 const (
 	pluginID                   = "com.mattermost.calls"
 	displayID                  = 45
-	readyTimeout               = 15 * time.Second
+	readyTimeout               = 20 * time.Second
 	stopTimeout                = 10 * time.Second
 	maxUploadRetryAttempts     = 5
 	uploadRetryAttemptWaitTime = 5 * time.Second
 	connCheckInterval          = 1 * time.Second
+	initCheckInterval          = 1 * time.Second
+	initCheckTimeout           = 5 * time.Second
 )
 
 type Recorder struct {
@@ -36,7 +38,7 @@ type Recorder struct {
 
 	readyCh   chan struct{}
 	stopCh    chan struct{}
-	stoppedCh chan struct{}
+	stoppedCh chan error
 
 	displayServer *exec.Cmd
 	transcoder    *exec.Cmd
@@ -46,7 +48,7 @@ type Recorder struct {
 	outPath string
 }
 
-func (rec *Recorder) runBrowser(recURL string) error {
+func (rec *Recorder) runBrowser(recURL string) (rerr error) {
 	opts := []chromedp.ExecAllocatorOption{
 		chromedp.NoFirstRun,
 		chromedp.NoDefaultBrowserCheck,
@@ -100,115 +102,119 @@ func (rec *Recorder) runBrowser(recURL string) error {
 	}
 
 	allocCtx, _ := chromedp.NewExecAllocator(context.Background(), opts...)
-	ctx, _ := chromedp.NewContext(allocCtx, contextOpts...)
 
-	chromedp.ListenTarget(ctx, func(ev interface{}) {
-		switch ev := ev.(type) {
-		case *cruntime.EventExceptionThrown:
-			slog.Error("chrome exception", slog.String("err", ev.ExceptionDetails.Text))
-			if ev.ExceptionDetails.Exception != nil {
-				slog.Error("chrome exception", slog.String("err", ev.ExceptionDetails.Exception.Description))
-			}
-		case *cruntime.EventConsoleAPICalled:
-			args := make([]string, 0, len(ev.Args))
-			for _, arg := range ev.Args {
-				var val interface{}
-				var str string
-				if len(arg.Value) > 0 {
-					err := json.Unmarshal(arg.Value, &val)
-					if err != nil {
-						slog.Error("failed to unmarshal", slog.String("err", err.Error()))
-						continue
-					}
-					str = fmt.Sprintf("%+v", val)
-				} else {
-					str = arg.Description
-				}
-				args = append(args, str)
-			}
-
-			str := fmt.Sprintf("chrome console %s %s", ev.Type.String(), strings.Join(args, " "))
-
-			slog.Debug(sanitizeConsoleLog(str))
-		}
-	})
-
-	if err := chromedp.Run(ctx, chromedp.Navigate(recURL)); err != nil {
-		return fmt.Errorf("failed to run chromedp: %w", err)
-	}
-
-	defer func() {
+	var ctx context.Context
+	cleanup := func() {
 		tctx, cancelCtx := context.WithTimeout(ctx, stopTimeout)
+		defer cancelCtx()
 		// graceful cancel
 		if err := chromedp.Cancel(tctx); err != nil {
 			slog.Error("failed to cancel context", slog.String("err", err.Error()))
 		}
-		cancelCtx()
-		close(rec.stoppedCh)
+	}
+
+	defer func() {
+		cleanup()
+		rec.stoppedCh <- rerr
 	}()
 
-	ticker := time.NewTicker(connCheckInterval)
-	defer ticker.Stop()
-
-	var connected bool
-	connectCheckExpr := "window.callsClient && window.callsClient.connected && !window.callsClient.closed"
 	for {
 		select {
 		case <-rec.stopCh:
-			slog.Info("stop signal received, shutting down browser")
-			return nil
-		case <-ticker.C:
-			if err := chromedp.Run(ctx,
-				chromedp.Evaluate(connectCheckExpr, &connected),
-			); err != nil {
-				slog.Error("failed to run chromedp", slog.String("err", err.Error()))
-				continue
-			}
-			if !connected {
-				slog.Debug("not connected to call yet")
-				continue
-			}
-
-			slog.Debug("connected to call")
-			close(rec.readyCh)
+			return fmt.Errorf("stop signal received while initializing client")
+		default:
 		}
-		break
-	}
 
-	var disconnected bool
-	disconnectCheckExpr := "!window.callsClient || window.callsClient.closed"
-	for {
-		select {
-		case <-rec.stopCh:
-			slog.Info("stop signal received, shutting down browser")
-		case <-ticker.C:
-			if err := chromedp.Run(ctx,
-				chromedp.Evaluate(disconnectCheckExpr, &disconnected),
-			); err != nil {
-				slog.Error("failed to run chromedp", slog.String("err", err.Error()))
-			}
-			if disconnected {
-				slog.Info("disconnected from call, shutting down")
-				if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
-					slog.Error("failed to send SIGTERM signal", slog.String("err", err.Error()))
+		var cancel func()
+
+		ctx, cancel = chromedp.NewContext(allocCtx, contextOpts...)
+		chromedp.ListenTarget(ctx, func(ev interface{}) {
+			switch ev := ev.(type) {
+			case *cruntime.EventExceptionThrown:
+				slog.Error("chrome exception", slog.String("err", ev.ExceptionDetails.Text))
+				if ev.ExceptionDetails.Exception != nil {
+					slog.Error("chrome exception", slog.String("err", ev.ExceptionDetails.Exception.Description))
 				}
-				return nil
+			case *cruntime.EventConsoleAPICalled:
+				args := make([]string, 0, len(ev.Args))
+				for _, arg := range ev.Args {
+					var val interface{}
+					var str string
+					if len(arg.Value) > 0 {
+						err := json.Unmarshal(arg.Value, &val)
+						if err != nil {
+							slog.Error("failed to unmarshal", slog.String("err", err.Error()))
+							continue
+						}
+						str = fmt.Sprintf("%+v", val)
+					} else {
+						str = arg.Description
+					}
+					args = append(args, str)
+				}
+
+				str := fmt.Sprintf("chrome console %s %s", ev.Type.String(), strings.Join(args, " "))
+
+				slog.Debug(sanitizeConsoleLog(str))
 			}
+		})
+
+		if err := chromedp.Run(ctx, chromedp.Navigate(recURL)); err != nil {
+			slog.Error("failed to run chromedp", slog.String("err", err.Error()))
+			cancel()
+			// If we don't event get to navigate to the URL then there's no point in
+			// evaluating expressions. We simply wait for a second and try from
+			// scratch.
+			time.Sleep(time.Second)
 			continue
 		}
-		break
+
+		// We poll until the client is initialized. In case of timeout we
+		// re-initialize the browser again.
+		if err := pollBrowserEvaluateExpr(ctx, `Boolean(window.callsClient)`, initCheckInterval, initCheckTimeout, rec.stopCh); err != nil {
+			slog.Error("failed to poll for client initialization", slog.String("err", err.Error()))
+			cancel()
+		} else {
+			// Client initialized, exiting the loop.
+			break
+		}
 	}
 
-	disconnectExpr := "window.callsClient.disconnect();"
-	if err := chromedp.Run(ctx,
-		chromedp.Evaluate(disconnectExpr+disconnectCheckExpr, &disconnected),
-	); err != nil {
-		slog.Error("failed to run chromedp", slog.String("err", err.Error()))
+	// Client has been initialized at this point, we move on to waiting until connected.
+	connectCheckExpr := "Boolean(window.callsClient) && Boolean(window.callsClient.connected) && Boolean(!window.callsClient.closed)"
+	if err := pollBrowserEvaluateExpr(ctx, connectCheckExpr, connCheckInterval, 0, rec.stopCh); err != nil {
+		return fmt.Errorf("connectivity check failed: %w", err)
 	}
-	if disconnected {
-		slog.Info("disconnected from call successfully")
-	} else {
-		slog.Error("failed to disconnect")
+
+	slog.Info("client connected to call")
+	close(rec.readyCh)
+
+	// Client connected, we poll until either we get the stop signal or client
+	// disconnects on its own.
+	disconnectCheckExpr := "Boolean(!window.callsClient) || Boolean(window.callsClient.closed)"
+	if err := pollBrowserEvaluateExpr(ctx, disconnectCheckExpr, connCheckInterval*2, 0, rec.stopCh); err != nil {
+		slog.Error("disconnect check failed", slog.String("err", err.Error()))
+
+		// We must have received the stop signal so we attempt a clean disconnect.
+		var disconnected bool
+		disconnectExpr := "window.callsClient.disconnect();"
+		if err := chromedp.Run(ctx,
+			chromedp.Evaluate(disconnectExpr+disconnectCheckExpr, &disconnected),
+		); err != nil {
+			slog.Error("failed to run chromedp", slog.String("err", err.Error()))
+		} else if disconnected {
+			slog.Info("disconnected from call successfully")
+		} else {
+			slog.Error("failed to disconnect")
+		}
+
+		return nil
+	}
+
+	// Client disconnected on its own so we self shutdown.
+	slog.Info("disconnected from call, shutting down")
+	if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
+		slog.Error("failed to send SIGTERM signal", slog.String("err", err.Error()))
 	}
 
 	return nil
@@ -253,7 +259,7 @@ func NewRecorder(cfg config.RecorderConfig) (*Recorder, error) {
 		cfg:       cfg,
 		readyCh:   make(chan struct{}),
 		stopCh:    make(chan struct{}),
-		stoppedCh: make(chan struct{}),
+		stoppedCh: make(chan error),
 		client:    client,
 	}, nil
 }
@@ -308,23 +314,37 @@ func (rec *Recorder) Start() error {
 }
 
 func (rec *Recorder) Stop() error {
-	if err := rec.transcoder.Process.Signal(syscall.SIGTERM); err != nil {
-		slog.Error("failed to send signal", slog.String("err", err.Error()))
-	}
-	if err := rec.transcoder.Wait(); err != nil {
-		slog.Error("failed waiting for transcoder to exit", slog.String("err", err.Error()))
+	if rec.transcoder != nil {
+		if err := rec.transcoder.Process.Signal(syscall.SIGTERM); err != nil {
+			slog.Error("failed to send signal", slog.String("err", err.Error()))
+		}
+		if err := rec.transcoder.Wait(); err != nil {
+			slog.Error("failed waiting for transcoder to exit", slog.String("err", err.Error()))
+		}
+		rec.transcoder = nil
 	}
 
 	close(rec.stopCh)
 
+	var exitErr error
 	select {
-	case <-rec.stoppedCh:
+	case exitErr = <-rec.stoppedCh:
 	case <-time.After(stopTimeout):
-		return fmt.Errorf("timed out waiting for stopped event")
+		exitErr = fmt.Errorf("timed out waiting for stopped event")
 	}
 
-	if err := rec.displayServer.Process.Kill(); err != nil {
-		slog.Error("failed to stop display process", slog.String("err", err.Error()))
+	if rec.displayServer != nil {
+		if err := rec.displayServer.Process.Signal(syscall.SIGTERM); err != nil {
+			slog.Error("failed to stop display process", slog.String("err", err.Error()))
+		}
+		if err := rec.displayServer.Wait(); err != nil {
+			slog.Error("failed waiting for display server to exit", slog.String("err", err.Error()))
+		}
+		rec.displayServer = nil
+	}
+
+	if exitErr != nil {
+		return exitErr
 	}
 
 	// TODO (MM-48546): implement better retry logic.

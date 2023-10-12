@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -8,6 +9,9 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
+
+	"github.com/chromedp/chromedp"
 )
 
 var (
@@ -45,4 +49,36 @@ func checkOSRequirements() error {
 	}
 
 	return nil
+}
+
+func pollBrowserEvaluateExpr(ctx context.Context, expr string, interval, timeout time.Duration, stopCh chan struct{}) error {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	var timeoutCh <-chan time.Time
+	if timeout > 0 {
+		timer := time.NewTimer(timeout)
+		defer timer.Stop()
+		timeoutCh = timer.C
+	}
+
+	for {
+		select {
+		case <-timeoutCh:
+			return fmt.Errorf("timed out")
+		case <-stopCh:
+			return fmt.Errorf("stop signal received while polling")
+		case <-ticker.C:
+			var res bool
+			if err := chromedp.Run(ctx,
+				chromedp.Evaluate(expr, &res),
+			); err != nil {
+				slog.Error("failed to run chromedp", slog.String("err", err.Error()))
+			} else if res {
+				slog.Info("expression succeeded", slog.String("expr", expr))
+				return nil
+			}
+			slog.Debug("expression failed", slog.String("expr", expr))
+		}
+	}
 }
