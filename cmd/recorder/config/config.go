@@ -55,7 +55,7 @@ type RecorderConfig struct {
 	// input config
 	SiteURL     string
 	CallID      string
-	ThreadID    string
+	PostID      string
 	RecordingID string
 	AuthToken   string
 
@@ -101,10 +101,10 @@ func (cfg RecorderConfig) IsValid() error {
 		return fmt.Errorf("CallID parsing failed")
 	}
 
-	if cfg.ThreadID == "" {
-		return fmt.Errorf("ThreadID cannot be empty")
-	} else if !idRE.MatchString(cfg.ThreadID) {
-		return fmt.Errorf("ThreadID parsing failed")
+	if cfg.PostID == "" {
+		return fmt.Errorf("PostID cannot be empty")
+	} else if !idRE.MatchString(cfg.PostID) {
+		return fmt.Errorf("PostID parsing failed")
 	}
 
 	if cfg.RecordingID == "" {
@@ -182,7 +182,7 @@ func (cfg RecorderConfig) ToEnv() []string {
 	return []string{
 		fmt.Sprintf("SITE_URL=%s", cfg.SiteURL),
 		fmt.Sprintf("CALL_ID=%s", cfg.CallID),
-		fmt.Sprintf("THREAD_ID=%s", cfg.ThreadID),
+		fmt.Sprintf("POST_ID=%s", cfg.PostID),
 		fmt.Sprintf("RECORDING_ID=%s", cfg.RecordingID),
 		fmt.Sprintf("AUTH_TOKEN=%s", cfg.AuthToken),
 		fmt.Sprintf("WIDTH=%d", cfg.Width),
@@ -203,7 +203,7 @@ func (cfg RecorderConfig) ToMap() map[string]any {
 	return map[string]any{
 		"site_url":      cfg.SiteURL,
 		"call_id":       cfg.CallID,
-		"thread_id":     cfg.ThreadID,
+		"post_id":       cfg.PostID,
 		"recording_id":  cfg.RecordingID,
 		"auth_token":    cfg.AuthToken,
 		"width":         cfg.Width,
@@ -219,7 +219,7 @@ func (cfg RecorderConfig) ToMap() map[string]any {
 func (cfg *RecorderConfig) FromMap(m map[string]any) *RecorderConfig {
 	cfg.SiteURL, _ = m["site_url"].(string)
 	cfg.CallID, _ = m["call_id"].(string)
-	cfg.ThreadID, _ = m["thread_id"].(string)
+	cfg.PostID, _ = m["post_id"].(string)
 	cfg.RecordingID, _ = m["recording_id"].(string)
 	cfg.AuthToken, _ = m["auth_token"].(string)
 	if width, ok := m["width"].(float64); ok {
@@ -264,7 +264,7 @@ func LoadFromEnv() (RecorderConfig, error) {
 	var cfg RecorderConfig
 	cfg.SiteURL = strings.TrimSuffix(os.Getenv("SITE_URL"), "/")
 	cfg.CallID = os.Getenv("CALL_ID")
-	cfg.ThreadID = os.Getenv("THREAD_ID")
+	cfg.PostID = os.Getenv("POST_ID")
 	cfg.RecordingID = os.Getenv("RECORDING_ID")
 	cfg.AuthToken = os.Getenv("AUTH_TOKEN")
 

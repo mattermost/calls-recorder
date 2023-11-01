@@ -19,7 +19,7 @@ func TestNewRecorder(t *testing.T) {
 		cfg := config.RecorderConfig{
 			SiteURL:     "http://localhost:8065",
 			CallID:      "8w8jorhr7j83uqr6y1st894hqe",
-			ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+			PostID:      "udzdsg7dwidbzcidx5khrf8nee",
 			RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
 			AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
 		}

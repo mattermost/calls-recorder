@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/mattermost/mattermost-plugin-calls/server/public"
+
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
@@ -71,10 +73,10 @@ func (rec *Recorder) uploadRecording() error {
 		return fmt.Errorf("failed to decode response body: %w", err)
 	}
 
-	payload, err = json.Marshal(map[string]string{
-		"recording_id": rec.cfg.RecordingID,
-		"file_id":      fi.Id,
-		"thread_id":    rec.cfg.ThreadID,
+	payload, err = json.Marshal(public.JobInfo{
+		JobID:  rec.cfg.RecordingID,
+		FileID: fi.Id,
+		PostID: rec.cfg.PostID,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to encode payload: %w", err)

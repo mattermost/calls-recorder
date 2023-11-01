@@ -33,20 +33,20 @@ func TestConfigIsValid(t *testing.T) {
 			expectedError: "CallID cannot be empty",
 		},
 		{
-			name: "missing ThreadID",
+			name: "missing PostID",
 			cfg: RecorderConfig{
 				SiteURL:   "http://localhost:8065",
 				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
 				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
 			},
-			expectedError: "ThreadID cannot be empty",
+			expectedError: "PostID cannot be empty",
 		},
 		{
 			name: "missing RecordingID",
 			cfg: RecorderConfig{
 				SiteURL:   "http://localhost:8065",
 				CallID:    "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:  "udzdsg7dwidbzcidx5khrf8nee",
+				PostID:    "udzdsg7dwidbzcidx5khrf8nee",
 				AuthToken: "qj75unbsef83ik9p7ueypb6iyw",
 			},
 			expectedError: "RecordingID cannot be empty",
@@ -56,7 +56,7 @@ func TestConfigIsValid(t *testing.T) {
 			cfg: RecorderConfig{
 				SiteURL:     "http://localhost:8065",
 				CallID:      "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+				PostID:      "udzdsg7dwidbzcidx5khrf8nee",
 				RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
 			},
 			expectedError: "AuthToken cannot be empty",
@@ -66,7 +66,7 @@ func TestConfigIsValid(t *testing.T) {
 			cfg: RecorderConfig{
 				SiteURL:     "http://localhost:8065",
 				CallID:      "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+				PostID:      "udzdsg7dwidbzcidx5khrf8nee",
 				RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
 				AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
 			},
@@ -77,7 +77,7 @@ func TestConfigIsValid(t *testing.T) {
 			cfg: RecorderConfig{
 				SiteURL:     "http://localhost:8065",
 				CallID:      "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+				PostID:      "udzdsg7dwidbzcidx5khrf8nee",
 				RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
 				AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
 				Width:       1280,
@@ -89,7 +89,7 @@ func TestConfigIsValid(t *testing.T) {
 			cfg: RecorderConfig{
 				SiteURL:     "http://localhost:8065",
 				CallID:      "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+				PostID:      "udzdsg7dwidbzcidx5khrf8nee",
 				RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
 				AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
 				Width:       1280,
@@ -102,7 +102,7 @@ func TestConfigIsValid(t *testing.T) {
 			cfg: RecorderConfig{
 				SiteURL:     "http://localhost:8065",
 				CallID:      "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+				PostID:      "udzdsg7dwidbzcidx5khrf8nee",
 				RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
 				AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
 				Width:       1280,
@@ -116,7 +116,7 @@ func TestConfigIsValid(t *testing.T) {
 			cfg: RecorderConfig{
 				SiteURL:     "http://localhost:8065",
 				CallID:      "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+				PostID:      "udzdsg7dwidbzcidx5khrf8nee",
 				RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
 				AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
 				Width:       1280,
@@ -131,7 +131,7 @@ func TestConfigIsValid(t *testing.T) {
 			cfg: RecorderConfig{
 				SiteURL:      "http://localhost:8065",
 				CallID:       "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:     "udzdsg7dwidbzcidx5khrf8nee",
+				PostID:       "udzdsg7dwidbzcidx5khrf8nee",
 				RecordingID:  "67t5u6cmtfbb7jug739d43xa9e",
 				AuthToken:    "qj75unbsef83ik9p7ueypb6iyw",
 				Width:        1280,
@@ -148,7 +148,7 @@ func TestConfigIsValid(t *testing.T) {
 			cfg: RecorderConfig{
 				SiteURL:     "http://localhost:8065",
 				CallID:      "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+				PostID:      "udzdsg7dwidbzcidx5khrf8nee",
 				RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
 				AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
 				Width:       1280,
@@ -164,7 +164,7 @@ func TestConfigIsValid(t *testing.T) {
 			cfg: RecorderConfig{
 				SiteURL:      "http://localhost:8065",
 				CallID:       "8w8jorhr7j83uqr6y1st894hqe",
-				ThreadID:     "udzdsg7dwidbzcidx5khrf8nee",
+				PostID:       "udzdsg7dwidbzcidx5khrf8nee",
 				RecordingID:  "67t5u6cmtfbb7jug739d43xa9e",
 				AuthToken:    "qj75unbsef83ik9p7ueypb6iyw",
 				Width:        1280,
@@ -267,8 +267,8 @@ func TestLoadFromEnv(t *testing.T) {
 		defer os.Unsetenv("SITE_URL")
 		os.Setenv("CALL_ID", "8w8jorhr7j83uqr6y1st894hqe")
 		defer os.Unsetenv("CALL_ID")
-		os.Setenv("THREAD_ID", "udzdsg7dwidbzcidx5khrf8nee")
-		defer os.Unsetenv("THREAD_ID")
+		os.Setenv("POST_ID", "udzdsg7dwidbzcidx5khrf8nee")
+		defer os.Unsetenv("POST_ID")
 		os.Setenv("RECORDING_ID", "67t5u6cmtfbb7jug739d43xa9e")
 		defer os.Unsetenv("RECORDING_ID")
 		os.Setenv("AUTH_TOKEN", "qj75unbsef83ik9p7ueypb6iyw")
@@ -291,7 +291,7 @@ func TestLoadFromEnv(t *testing.T) {
 		require.Equal(t, RecorderConfig{
 			SiteURL:     "http://localhost:8065",
 			CallID:      "8w8jorhr7j83uqr6y1st894hqe",
-			ThreadID:    "udzdsg7dwidbzcidx5khrf8nee",
+			PostID:      "udzdsg7dwidbzcidx5khrf8nee",
 			RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
 			AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
 			Width:       1920,
@@ -308,14 +308,14 @@ func TestRecorderConfigToEnv(t *testing.T) {
 	var cfg RecorderConfig
 	cfg.SiteURL = "http://localhost:8065"
 	cfg.CallID = "8w8jorhr7j83uqr6y1st894hqe"
-	cfg.ThreadID = "udzdsg7dwidbzcidx5khrf8nee"
+	cfg.PostID = "udzdsg7dwidbzcidx5khrf8nee"
 	cfg.RecordingID = "67t5u6cmtfbb7jug739d43xa9e"
 	cfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
 	cfg.SetDefaults()
 	require.Equal(t, []string{
 		"SITE_URL=http://localhost:8065",
 		"CALL_ID=8w8jorhr7j83uqr6y1st894hqe",
-		"THREAD_ID=udzdsg7dwidbzcidx5khrf8nee",
+		"POST_ID=udzdsg7dwidbzcidx5khrf8nee",
 		"RECORDING_ID=67t5u6cmtfbb7jug739d43xa9e",
 		"AUTH_TOKEN=qj75unbsef83ik9p7ueypb6iyw",
 		"WIDTH=1920",
@@ -332,7 +332,7 @@ func TestRecorderConfigMap(t *testing.T) {
 	var cfg RecorderConfig
 	cfg.SiteURL = "http://localhost:8065"
 	cfg.CallID = "8w8jorhr7j83uqr6y1st894hqe"
-	cfg.ThreadID = "udzdsg7dwidbzcidx5khrf8nee"
+	cfg.PostID = "udzdsg7dwidbzcidx5khrf8nee"
 	cfg.RecordingID = "67t5u6cmtfbb7jug739d43xa9e"
 	cfg.AuthToken = "qj75unbsef83ik9p7ueypb6iyw"
 	cfg.SetDefaults()
