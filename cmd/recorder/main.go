@@ -46,10 +46,12 @@ func main() {
 		if err := recorder.ReportJobFailure(err.Error()); err != nil {
 			slog.Error("failed to report job failure", slog.String("err", err.Error()))
 		}
+
 		// cleaning up
 		if err := recorder.Stop(); err != nil {
 			slog.Error("failed to stop recorder", slog.String("err", err.Error()))
 		}
+
 		os.Exit(1)
 	}
 
