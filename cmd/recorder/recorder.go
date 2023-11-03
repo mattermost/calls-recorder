@@ -371,7 +371,16 @@ func (rec *Recorder) Start() error {
 
 	slog.Info("browser connected, ready to record")
 
-	filename := fmt.Sprintf("%s-%s.mp4", rec.cfg.CallID, time.Now().UTC().Format("2006-01-02-15_04_05"))
+	name := rec.cfg.CallID
+
+	channel, err := rec.getChannelForCall()
+	if err != nil {
+		slog.Error("failed to get channel", slog.String("err", err.Error()))
+	} else if channel.Type == model.ChannelTypeOpen || channel.Type == model.ChannelTypePrivate {
+		name = channel.DisplayName
+	}
+
+	filename := sanitizeFilename(fmt.Sprintf("call-%s-%s.mp4", name, time.Now().UTC().Format("2006-01-02-15_04")))
 	rec.outPath = filepath.Join(getDataDir(), filename)
 	err = rec.runTranscoder(rec.outPath)
 	if err != nil {

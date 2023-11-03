@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -11,12 +13,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mattermost/mattermost/server/public/model"
+
 	"github.com/chromedp/chromedp"
 )
 
 var (
 	unpriviledgeUsersCloneSysctlPath = "/proc/sys/kernel/unprivileged_userns_clone"
 	icePasswordRE                    = regexp.MustCompile(`ice-pwd:[\w|\+|/]+`)
+	filenameSanitizationRE           = regexp.MustCompile(`[\\:*?\"<>|\n\s/]`)
 )
 
 func sanitizeConsoleLog(str string) string {
@@ -88,4 +93,27 @@ func getDataDir() string {
 		return dir
 	}
 	return dataDir
+}
+
+func (rec *Recorder) getChannelForCall() (*model.Channel, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), httpRequestTimeout)
+	defer cancelFn()
+
+	url := fmt.Sprintf("%s/plugins/%s/bot/channels/%s", rec.cfg.SiteURL, pluginID, rec.cfg.CallID)
+	resp, err := rec.client.DoAPIRequest(ctx, http.MethodGet, url, "", "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch channel: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var channel *model.Channel
+	if err := json.NewDecoder(resp.Body).Decode(&channel); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal channel: %w", err)
+	}
+
+	return channel, nil
+}
+
+func sanitizeFilename(name string) string {
+	return filenameSanitizationRE.ReplaceAllString(name, "_")
 }
