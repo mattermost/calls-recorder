@@ -97,8 +97,8 @@ github.com/mattermost/ldap v3.0.4+incompatible h1:SOeNnz+JNR+foQ3yHkYqijb9MLPhXN
 github.com/mattermost/ldap v3.0.4+incompatible/go.mod h1:b4reDCcGpBxJ4WX0f224KFY+OR0npin7or7EFpeIko4=
 github.com/mattermost/logr/v2 v2.0.16 h1:jnePX4cPskC3WDFvUardh/xZfxNdsFXbEERJQ1kUEDE=
 github.com/mattermost/logr/v2 v2.0.16/go.mod h1:1dm/YhTpozsqANXxo5Pi5zYLBsal2xY0pX+JZNbzYJY=
-github.com/mattermost/mattermost-plugin-calls/server/public v0.0.2 h1:L7DePXuWiSByqIpbe2mf9ubUVeQrMftimI/9NzHaXKA=
-github.com/mattermost/mattermost-plugin-calls/server/public v0.0.2/go.mod h1:9a5FoYxu9rPCvV4FEo0DkJSqqCZ80FCeB9Y4haBI2FQ=
+github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3-0.20231103204030-06bd54bcfa67 h1:/ANYN4G3gexpHixsowvd47jTrAL0tJN3aDROV3ox9NQ=
+github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3-0.20231103204030-06bd54bcfa67/go.mod h1:9a5FoYxu9rPCvV4FEo0DkJSqqCZ80FCeB9Y4haBI2FQ=
 github.com/mattermost/mattermost/server/public v0.0.0-20230613002302-62a3ee8adcb5 h1:X8ue+QQn0VJe6qR0q2kHGFhQCn5T4rqb7XS0t6R1r3A=
 github.com/mattermost/mattermost/server/public v0.0.0-20230613002302-62a3ee8adcb5/go.mod h1:TtECPYX/ftU43bCGqN5W3Ic2gPDN2+zeKhXfE2YPRvw=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=

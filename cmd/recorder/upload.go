@@ -74,9 +74,9 @@ func (rec *Recorder) uploadRecording() error {
 	}
 
 	payload, err = json.Marshal(public.JobInfo{
-		JobID:  rec.cfg.RecordingID,
-		FileID: fi.Id,
-		PostID: rec.cfg.PostID,
+		JobID:   rec.cfg.RecordingID,
+		FileIDs: []string{fi.Id},
+		PostID:  rec.cfg.PostID,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to encode payload: %w", err)
