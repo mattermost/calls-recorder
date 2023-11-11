@@ -341,7 +341,12 @@ func (rec *Recorder) Start() error {
 		return err
 	}
 
-	var err error
+	filename, err := rec.getFilenameForCall("mp4")
+	if err != nil {
+		return fmt.Errorf("failed to get filename for call: %w", err)
+	}
+	rec.outPath = filepath.Join(getDataDir(), filename)
+
 	rec.displayServer, err = runDisplayServer(rec.cfg.Width, rec.cfg.Height)
 	if err != nil {
 		return fmt.Errorf("failed to run display server: %s", err)
@@ -371,17 +376,6 @@ func (rec *Recorder) Start() error {
 
 	slog.Info("browser connected, ready to record")
 
-	name := rec.cfg.CallID
-
-	channel, err := rec.getChannelForCall()
-	if err != nil {
-		slog.Error("failed to get channel", slog.String("err", err.Error()))
-	} else if channel.Type == model.ChannelTypeOpen || channel.Type == model.ChannelTypePrivate {
-		name = channel.DisplayName
-	}
-
-	filename := sanitizeFilename(fmt.Sprintf("call-%s-%s.mp4", name, time.Now().UTC().Format("2006-01-02-15_04")))
-	rec.outPath = filepath.Join(getDataDir(), filename)
 	err = rec.runTranscoder(rec.outPath)
 	if err != nil {
 		return fmt.Errorf("failed to run transcoder: %s", err)
