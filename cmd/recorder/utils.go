@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mattermost/mattermost/server/public/model"
-
 	"github.com/chromedp/chromedp"
 )
 
@@ -95,25 +93,31 @@ func getDataDir() string {
 	return dataDir
 }
 
-func (rec *Recorder) getChannelForCall() (*model.Channel, error) {
+func sanitizeFilename(name string) string {
+	return filenameSanitizationRE.ReplaceAllString(name, "_")
+}
+
+func (rec *Recorder) getFilenameForCall(ext string) (string, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), httpRequestTimeout)
 	defer cancelFn()
 
-	url := fmt.Sprintf("%s/plugins/%s/bot/channels/%s", rec.cfg.SiteURL, pluginID, rec.cfg.CallID)
+	url := fmt.Sprintf("%s/plugins/%s/bot/calls/%s/filename", rec.cfg.SiteURL, pluginID, rec.cfg.CallID)
 	resp, err := rec.client.DoAPIRequest(ctx, http.MethodGet, url, "", "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch channel: %w", err)
+		return "", fmt.Errorf("failed to get filename: %w", err)
 	}
 	defer resp.Body.Close()
 
-	var channel *model.Channel
-	if err := json.NewDecoder(resp.Body).Decode(&channel); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal channel: %w", err)
+	var m map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
+		return "", fmt.Errorf("failed to unmarshal filename: %w", err)
 	}
 
-	return channel, nil
-}
+	filename := sanitizeFilename(m["filename"])
 
-func sanitizeFilename(name string) string {
-	return filenameSanitizationRE.ReplaceAllString(name, "_")
+	if filename == "" {
+		return "", fmt.Errorf("invalid empty filename")
+	}
+
+	return filename + "." + ext, nil
 }
