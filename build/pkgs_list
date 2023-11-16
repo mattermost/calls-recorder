@@ -1,8 +1,8 @@
 ca-certificates=20230311
-chromium=118.0.5993.117-1
-chromium-driver=118.0.5993.117-1
-chromium-sandbox=118.0.5993.117-1
-ffmpeg=7:6.0-9
+chromium=119.0.6045.159-1
+chromium-driver=119.0.6045.159-1
+chromium-sandbox=119.0.6045.159-1
+ffmpeg=7:6.1-2
 fonts-recommended=1
 pulseaudio=16.1+dfsg1-2+b1
 wget=1.21.4-1+b1
