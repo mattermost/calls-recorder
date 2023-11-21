@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -17,6 +19,7 @@ import (
 var (
 	unpriviledgeUsersCloneSysctlPath = "/proc/sys/kernel/unprivileged_userns_clone"
 	icePasswordRE                    = regexp.MustCompile(`ice-pwd:[\w|\+|/]+`)
+	filenameSanitizationRE           = regexp.MustCompile(`[\\:*?\"<>|\n\s/]`)
 )
 
 func sanitizeConsoleLog(str string) string {
@@ -81,4 +84,40 @@ func pollBrowserEvaluateExpr(ctx context.Context, expr string, interval, timeout
 			slog.Debug("expression failed", slog.String("expr", expr))
 		}
 	}
+}
+
+func getDataDir() string {
+	if dir := os.Getenv("DATA_DIR"); dir != "" {
+		return dir
+	}
+	return dataDir
+}
+
+func sanitizeFilename(name string) string {
+	return filenameSanitizationRE.ReplaceAllString(name, "_")
+}
+
+func (rec *Recorder) getFilenameForCall(ext string) (string, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), httpRequestTimeout)
+	defer cancelFn()
+
+	url := fmt.Sprintf("%s/plugins/%s/bot/calls/%s/filename", rec.cfg.SiteURL, pluginID, rec.cfg.CallID)
+	resp, err := rec.client.DoAPIRequest(ctx, http.MethodGet, url, "", "")
+	if err != nil {
+		return "", fmt.Errorf("failed to get filename: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var m map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
+		return "", fmt.Errorf("failed to unmarshal filename: %w", err)
+	}
+
+	filename := sanitizeFilename(m["filename"])
+
+	if filename == "" {
+		return "", fmt.Errorf("invalid empty filename")
+	}
+
+	return filename + "." + ext, nil
 }
