@@ -15,7 +15,7 @@ func main() {
 		AddSource:   true,
 		Level:       slog.LevelDebug,
 		ReplaceAttr: slogReplaceAttr,
-	}))
+	})).With("recID", os.Getenv("RECORDING_ID"))
 	slog.SetDefault(logger)
 
 	pid := os.Getpid()
