@@ -31,6 +31,8 @@ CONFIG_APP_CODE         += ./cmd/recorder
 ifneq (, $(shell which go))
 ARCH                    ?= $(shell go version | awk '{print substr($$4,index($$4,"/")+1)}')
 endif
+# Target OS will always be linux.
+OS                      := linux
 # Fallback to amd64 if ARCH is still unset.
 ARCH                    ?= amd64
 
@@ -48,16 +50,21 @@ DOCKER_REGISTRY_REPO    ?= mattermost/${APP_NAME}-daily
 # Registry credentials
 DOCKER_USER             ?= user
 DOCKER_PASSWORD         ?= password
-## Docker Images
-DOCKER_IMAGE_GO         += "golang:${GO_VERSION}@sha256:b17c35044f4062d83c815434615997eed97697daae8745c6dd39dc3673b87efb"
+# Docker Images
+DOCKER_IMAGE_GO         += "golang:${GO_VERSION}"
 DOCKER_IMAGE_GOLINT     += "golangci/golangci-lint:v1.54.2@sha256:abe731fe6bb335a30eab303a41dd5c2b630bb174372a4da08e3d42eab5324127"
-DOCKER_IMAGE_DOCKERLINT += "hadolint/hadolint:v2.9.2@sha256:d355bd7df747a0f124f3b5e7b21e9dafd0cb19732a276f901f0fdee243ec1f3b"
+DOCKER_IMAGE_DOCKERLINT += "hadolint/hadolint:v2.12.0@sha256:9259e253a4e299b50c92006149dd3a171c7ea3c5bd36f060022b5d2c1ff0fbbe"
 DOCKER_IMAGE_COSIGN     += "bitnami/cosign:1.8.0@sha256:8c2c61c546258fffff18b47bb82a65af6142007306b737129a7bd5429d53629a"
 DOCKER_IMAGE_GH_CLI     += "registry.internal.mattermost.com/images/build-ci:3.16.0@sha256:f6a229a9ababef3c483f237805ee4c3dbfb63f5de4fbbf58f4c4b6ed8fcd34b6"
 
-DOCKER_IMAGE_RUNNER     := "debian:sid-20230109@sha256:c7caaec69b8b2d56332fb0860252e7865f6900f8031c845ae8f5f16045c619bd"
-ifeq ($(ARCH),arm64)
-	DOCKER_IMAGE_RUNNER="arm64v8/debian:sid-20230109@sha256:518e58d25b6ec2ed341247fbcd0c1cd992de98b8323568164a588ec34f588aec"
+# When running locally we default to the current architecture.
+DOCKER_BUILD_PLATFORMS   := "${OS}/${ARCH}"
+DOCKER_BUILD_OUTPUT_TYPE := "docker"
+
+# When running on CI we want to use our official release targets.
+ifeq ($(CI),true)
+DOCKER_BUILD_PLATFORMS   := "linux/amd64,linux/arm64"
+DOCKER_BUILD_OUTPUT_TYPE := "registry"
 endif
 
 ## Cosign Variables
@@ -79,7 +86,7 @@ GO_LDFLAGS                   += -X "github.com/mattermost/${APP_NAME}/service.bu
 GO_LDFLAGS                   += -X "github.com/mattermost/${APP_NAME}/service.buildDate=$(BUILD_DATE)"
 GO_LDFLAGS                   += -X "github.com/mattermost/${APP_NAME}/service.goVersion=$(GO_VERSION)"
 # Architectures to build for
-GO_BUILD_PLATFORMS           ?= linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 freebsd-amd64
+GO_BUILD_PLATFORMS           ?= linux-amd64 linux-arm64
 GO_BUILD_PLATFORMS_ARTIFACTS = $(foreach cmd,$(addprefix go-build/,${APP_NAME}),$(addprefix $(cmd)-,$(GO_BUILD_PLATFORMS)))
 # Build options
 GO_BUILD_OPTS                += -mod=readonly -trimpath
@@ -155,11 +162,11 @@ test: go-test ## to test
 .PHONY: docker-build
 
 docker-build: ## to build the docker image
-	@$(INFO) Performing Docker build ${APP_NAME}:${APP_VERSION} for ${ARCH}
-	$(AT)$(DOCKER) build \
-	--build-arg GO_IMAGE=${DOCKER_IMAGE_GO} \
-	--build-arg ARCH=${ARCH} \
-	--build-arg RUNNER_IMAGE=${DOCKER_IMAGE_RUNNER} \
+	@$(INFO) Performing Docker build ${APP_NAME}:${APP_VERSION} for ${DOCKER_BUILD_PLATFORMS}
+	$(AT)$(DOCKER) buildx build \
+	--platform ${DOCKER_BUILD_PLATFORMS} \
+	--output=type=${DOCKER_BUILD_OUTPUT_TYPE} \
+	--build-arg GO_VERSION=${GO_VERSION} \
 	-f ${DOCKER_FILE} . \
 	-t ${APP_NAME}:${APP_VERSION} || ${FAIL}
 	@$(OK) Performing Docker build ${APP_NAME}:${APP_VERSION}
@@ -268,13 +275,8 @@ go-build: $(GO_BUILD_PLATFORMS_ARTIFACTS) ## to build binaries
 go-build/%:
 	@$(INFO) go build $*...
 	$(AT)target="$*"; \
-	command="${APP_NAME}"; \
-	platform_ext="$${target#$$command-*}"; \
-	platform="$${platform_ext%.*}"; \
-	export GOOS="$${platform%%-*}"; \
-	export GOARCH="$${platform#*-}"; \
-	echo export GOOS=$${GOOS}; \
-	echo export GOARCH=$${GOARCH}; \
+	GOOS=${OS} \
+	GOARCH=${ARCH} \
 	CGO_ENABLED=0 \
 	$(GO) build ${GO_BUILD_OPTS} \
 	-ldflags '${GO_LDFLAGS}' \
@@ -363,7 +365,7 @@ endif
 
 .PHONY: go-pinned-packages
 go-pinned-packages: ## to update pinned packages list for the Ubuntu based Docker image
-	cd build && go run generator.go; cd ..
+	cd build && go run generator.go amd64 && go run generator.go arm64; cd ..
 
 .PHONY: clean
 clean: ## to clean-up
