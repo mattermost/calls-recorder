@@ -53,7 +53,7 @@ DOCKER_IMAGE_GO         += "golang:${GO_VERSION}@sha256:b17c35044f4062d83c815434
 DOCKER_IMAGE_GOLINT     += "golangci/golangci-lint:v1.54.2@sha256:abe731fe6bb335a30eab303a41dd5c2b630bb174372a4da08e3d42eab5324127"
 DOCKER_IMAGE_DOCKERLINT += "hadolint/hadolint:v2.9.2@sha256:d355bd7df747a0f124f3b5e7b21e9dafd0cb19732a276f901f0fdee243ec1f3b"
 DOCKER_IMAGE_COSIGN     += "bitnami/cosign:1.8.0@sha256:8c2c61c546258fffff18b47bb82a65af6142007306b737129a7bd5429d53629a"
-DOCKER_IMAGE_GH_CLI     += "registry.internal.mattermost.com/images/build-ci:3.16.0@sha256:f6a229a9ababef3c483f237805ee4c3dbfb63f5de4fbbf58f4c4b6ed8fcd34b6"
+DOCKER_IMAGE_GH_CLI     += "ghcr.io/supportpal/github-gh-cli:2.31.0@sha256:71371e36e62bd24ddd42d9e4c720a7e9954cb599475e24d1407af7190e2a5685"
 
 DOCKER_IMAGE_RUNNER     := "debian:sid-20230109@sha256:c7caaec69b8b2d56332fb0860252e7865f6900f8031c845ae8f5f16045c619bd"
 ifeq ($(ARCH),arm64)
@@ -356,7 +356,7 @@ else
 	-e GITHUB_TOKEN=${GITHUB_TOKEN} \
 	$(DOCKER_IMAGE_GH_CLI) \
 	/bin/sh -c \
-	"cd /app && \
+	"git config --global --add safe.directory /app && cd /app && \
 	gh release create $(APP_VERSION) --generate-notes $(GO_OUT_BIN_DIR)/*" || ${FAIL}
 endif
 	@$(OK) Generating github-release http://github.com/$(GITHUB_ORG)/$(GITHUB_REPO)/releases/tag/$(APP_VERSION) ...
