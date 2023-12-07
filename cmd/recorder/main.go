@@ -52,7 +52,11 @@ func main() {
 			slog.Error("failed to stop recorder", slog.String("err", err.Error()))
 		}
 
-		os.Exit(1)
+		// Although an error case, if we fail to start we are not losing any
+		// recording data so the associated resources (e.g. container, volume) can be safely deleted.
+		// This is signaled to the calling layer (calls-offloader) by exiting with
+		// a success code.
+		os.Exit(0)
 	}
 
 	slog.Info("recording has started")
