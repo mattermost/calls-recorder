@@ -32,8 +32,6 @@ const (
 	displayID                    = 45
 	readyTimeout                 = 20 * time.Second
 	stopTimeout                  = 10 * time.Second
-	maxUploadRetryAttempts       = 5
-	uploadRetryAttemptWaitTime   = 5 * time.Second
 	connCheckInterval            = 1 * time.Second
 	initCheckInterval            = 1 * time.Second
 	initCheckTimeout             = 5 * time.Second
@@ -426,25 +424,11 @@ func (rec *Recorder) Stop() error {
 		return exitErr
 	}
 
-	// TODO (MM-48546): implement better retry logic.
-	var attempt int
-	for {
-		err := rec.uploadRecording()
-		if err == nil {
-			slog.Info("recording uploaded successfully")
-			break
-		}
-
-		if attempt == maxUploadRetryAttempts {
-			return fmt.Errorf("max retry attempts reached, exiting")
-		}
-
-		attempt++
-		slog.Info("failed to upload recording", slog.String("err", err.Error()))
-		slog.Info("retrying", slog.Duration("wait_time", uploadRetryAttemptWaitTime))
-		time.Sleep(uploadRetryAttemptWaitTime)
+	if err := rec.publishRecording(); err != nil {
+		return fmt.Errorf("failed to publish recording: %w", err)
 	}
 
+	slog.Debug("upload successful, removing file", slog.String("outpath", rec.outPath))
 	if err := os.Remove(rec.outPath); err != nil {
 		slog.Error("failed to remove recording", slog.String("err", err.Error()))
 	}
