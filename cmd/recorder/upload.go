@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,6 +19,35 @@ const (
 	httpRequestTimeout = 10 * time.Second
 	httpUploadTimeout  = 5 * time.Minute
 )
+
+var (
+	maxUploadRetryAttempts     = 20
+	uploadRetryAttemptWaitTime = 5 * time.Second
+)
+
+func (rec *Recorder) publishRecording() error {
+	var attempt int
+	for {
+		err := rec.uploadRecording()
+		if err == nil {
+			slog.Info("recording uploaded successfully")
+			break
+		}
+
+		if attempt == maxUploadRetryAttempts {
+			return fmt.Errorf("max retry attempts reached, exiting")
+		}
+
+		attempt++
+		slog.Info("failed to upload recording", slog.String("err", err.Error()))
+
+		waitTime := uploadRetryAttemptWaitTime * time.Duration(attempt)
+		slog.Info("retrying", slog.Duration("wait_time", waitTime))
+		time.Sleep(waitTime)
+	}
+
+	return nil
+}
 
 func (rec *Recorder) uploadRecording() error {
 	file, err := os.Open(rec.outPath)
