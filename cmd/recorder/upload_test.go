@@ -52,6 +52,22 @@ func TestUploadRecording(t *testing.T) {
 
 	rec.outPath = recFile.Name()
 
+	t.Run("invalid response", func(t *testing.T) {
+		middlewares = []middleware{
+			func(w http.ResponseWriter, r *http.Request) bool {
+				if r.URL.Path == "/plugins/com.mattermost.calls/bot/uploads" && r.Method == http.MethodPost {
+					w.WriteHeader(500)
+					fmt.Fprintln(w, `Internal Server Error`)
+					return true
+				}
+
+				return false
+			},
+		}
+		err := rec.uploadRecording()
+		require.EqualError(t, err, "failed to create upload: AppErrorFromJSON: model.utils.decode_json.app_error, body: Internal Server Error\n, invalid character 'I' looking for beginning of value")
+	})
+
 	t.Run("upload creation failure", func(t *testing.T) {
 		middlewares = []middleware{
 			func(w http.ResponseWriter, r *http.Request) bool {

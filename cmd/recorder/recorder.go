@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -323,6 +324,11 @@ func NewRecorder(cfg config.RecorderConfig) (*Recorder, error) {
 
 	client := model.NewAPIv4Client(cfg.SiteURL)
 	client.SetToken(cfg.AuthToken)
+	client.HTTPClient = &http.Client{
+		Transport: &clientTransport{
+			transport: http.DefaultTransport,
+		},
+	}
 
 	return &Recorder{
 		cfg:                 cfg,
