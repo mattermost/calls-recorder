@@ -8,12 +8,15 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/mattermost/calls-recorder/cmd/recorder/config"
 
 	"github.com/chromedp/chromedp"
 )
@@ -157,4 +160,98 @@ func (ct *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	}
 
 	return res, err
+}
+
+func getInsecureOrigins(siteURL string) ([]string, error) {
+	if siteURL == "" {
+		return nil, fmt.Errorf("invalid siteURL: should not be empty")
+	}
+
+	var insecureOrigins []string
+
+	u, err := url.Parse(siteURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse SiteURL: %w", err)
+	}
+	// If the given SiteURL is not running on a secure HTTPs connection, we add
+	// it to the list of allowed insecure origins. We assume this would only
+	// happen either on internal private networks or for development/testing purposes.
+	if u.Scheme == "http" {
+		insecureOrigins = []string{
+			siteURL,
+		}
+	}
+
+	if devMode := os.Getenv("DEV_MODE"); devMode == "true" {
+		insecureOrigins = append(insecureOrigins, []string{
+			"http://172.17.0.1:8065",
+			"http://host.docker.internal:8065",
+			"http://mm-server:8065",
+			"http://host.minikube.internal:8065",
+		}...)
+	}
+
+	return insecureOrigins, nil
+}
+
+func genChromiumOptions(cfg config.RecorderConfig) ([]chromedp.ExecAllocatorOption, []chromedp.ContextOption, error) {
+	opts := []chromedp.ExecAllocatorOption{
+		chromedp.NoFirstRun,
+		chromedp.NoDefaultBrowserCheck,
+		chromedp.DisableGPU,
+
+		// puppeteer default behavior
+		chromedp.Flag("disable-infobars", true),
+		chromedp.Flag("disable-background-networking", true),
+		chromedp.Flag("enable-features", "NetworkService,NetworkServiceInProcess"),
+		chromedp.Flag("disable-background-timer-throttling", true),
+		chromedp.Flag("disable-backgrounding-occluded-windows", true),
+		chromedp.Flag("disable-breakpad", true),
+		chromedp.Flag("disable-client-side-phishing-detection", true),
+		chromedp.Flag("disable-default-apps", true),
+		chromedp.Flag("disable-dev-shm-usage", true),
+		chromedp.Flag("disable-extensions", true),
+		chromedp.Flag("disable-features", "site-per-process,TranslateUI,BlinkGenPropertyTrees"),
+		chromedp.Flag("disable-hang-monitor", true),
+		chromedp.Flag("disable-ipc-flooding-protection", true),
+		chromedp.Flag("disable-popup-blocking", true),
+		chromedp.Flag("disable-prompt-on-repost", true),
+		chromedp.Flag("disable-renderer-backgrounding", true),
+		chromedp.Flag("disable-sync", true),
+		chromedp.Flag("force-color-profile", "srgb"),
+		chromedp.Flag("metrics-recording-only", true),
+		chromedp.Flag("safebrowsing-disable-auto-update", true),
+		chromedp.Flag("password-store", "basic"),
+		chromedp.Flag("use-mock-keychain", true),
+		chromedp.Flag("use-fake-ui-for-media-stream", true),
+		chromedp.Flag("use-fake-device-for-media-stream", true),
+
+		// custom args
+		chromedp.Flag("incognito", true),
+		chromedp.Flag("kiosk", true),
+		chromedp.Flag("enable-automation", false),
+		chromedp.Flag("autoplay-policy", "no-user-gesture-required"),
+		chromedp.Flag("window-position", "0,0"),
+		chromedp.Flag("window-size", fmt.Sprintf("%d,%d", cfg.Width, cfg.Height)),
+		chromedp.Flag("display", fmt.Sprintf(":%d", displayID)),
+	}
+
+	contextOpts := []chromedp.ContextOption{
+		chromedp.WithErrorf(slogDebugF),
+	}
+
+	if devMode := os.Getenv("DEV_MODE"); devMode == "true" {
+		opts = append(opts, chromedp.NoSandbox)
+		contextOpts = append(contextOpts, chromedp.WithLogf(slogDebugF))
+		contextOpts = append(contextOpts, chromedp.WithDebugf(slogDebugF))
+	}
+
+	if insecureOrigins, err := getInsecureOrigins(cfg.SiteURL); err != nil {
+		return nil, nil, fmt.Errorf("failed to get insecure origins: %w", err)
+	} else if len(insecureOrigins) > 0 {
+		slog.Info("adding insecure origins exceptions", slog.String("origins", strings.Join(insecureOrigins, ",")))
+		opts = append(opts, chromedp.Flag("unsafely-treat-insecure-origin-as-secure", strings.Join(insecureOrigins, ",")))
+	}
+
+	return opts, contextOpts, nil
 }

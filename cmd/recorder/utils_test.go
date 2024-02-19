@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mattermost/calls-recorder/cmd/recorder/config"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -122,6 +124,112 @@ func TestSanitizeFilename(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			require.Equal(t, tc.expected, sanitizeFilename(tc.input))
+		})
+	}
+}
+
+func TestGenChromiumOptions(t *testing.T) {
+	t.Run("secure SiteURL", func(t *testing.T) {
+		var cfg config.RecorderConfig
+		cfg.SetDefaults()
+		cfg.SiteURL = "https://mm-server"
+		opts, ctxOpts, err := genChromiumOptions(cfg)
+		require.NoError(t, err)
+		require.Len(t, opts, 34)
+		require.Len(t, ctxOpts, 1)
+	})
+
+	t.Run("plain text SiteURL", func(t *testing.T) {
+		var cfg config.RecorderConfig
+		cfg.SetDefaults()
+		cfg.SiteURL = "http://mm-server"
+		opts, ctxOpts, err := genChromiumOptions(cfg)
+		require.NoError(t, err)
+		require.Len(t, opts, 35)
+		require.Len(t, ctxOpts, 1)
+	})
+
+	t.Run("dev mode", func(t *testing.T) {
+		os.Setenv("DEV_MODE", "true")
+		defer os.Unsetenv("DEV_MODE")
+		var cfg config.RecorderConfig
+		cfg.SetDefaults()
+		cfg.SiteURL = "http://localhost:8065"
+		opts, ctxOpts, err := genChromiumOptions(cfg)
+		require.NoError(t, err)
+		require.Len(t, opts, 36)
+		require.Len(t, ctxOpts, 3)
+	})
+}
+
+func TestGetInsecureOrigins(t *testing.T) {
+	tcs := []struct {
+		name     string
+		siteURL  string
+		expected []string
+		err      string
+		devMode  bool
+	}{
+		{
+			name: "empty string",
+			err:  "invalid siteURL: should not be empty",
+		},
+		{
+			name:    "parse failure",
+			siteURL: string([]byte{0x7f}),
+			err:     `failed to parse SiteURL: parse "\x7f": net/url: invalid control character in URL`,
+		},
+		{
+			name:    "secure siteURL",
+			siteURL: "https://localhost",
+		},
+		{
+			name:    "plain text siteURL",
+			siteURL: "http://localhost",
+			expected: []string{
+				"http://localhost",
+			},
+		},
+		{
+			name:    "secure siteURL, dev mode",
+			siteURL: "https://localhost",
+			devMode: true,
+			expected: []string{
+				"http://172.17.0.1:8065",
+				"http://host.docker.internal:8065",
+				"http://mm-server:8065",
+				"http://host.minikube.internal:8065",
+			},
+		},
+		{
+			name:    "plain text siteURL, dev mode",
+			siteURL: "http://localhost",
+			devMode: true,
+			expected: []string{
+				"http://localhost",
+				"http://172.17.0.1:8065",
+				"http://host.docker.internal:8065",
+				"http://mm-server:8065",
+				"http://host.minikube.internal:8065",
+			},
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.devMode {
+				os.Setenv("DEV_MODE", "true")
+				defer os.Unsetenv("DEV_MODE")
+			}
+
+			origins, err := getInsecureOrigins(tc.siteURL)
+			if tc.err != "" {
+				require.EqualError(t, err, tc.err)
+				require.Empty(t, origins)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.expected, origins)
+			}
 		})
 	}
 }
