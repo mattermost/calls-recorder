@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -87,20 +88,57 @@ func (rec *Recorder) uploadRecording() error {
 		return fmt.Errorf("failed to decode response body: %w", err)
 	}
 
-	ctx, cancelCtx = context.WithTimeout(context.Background(), httpUploadTimeout)
-	defer cancelCtx()
-	resp, err = rec.client.DoAPIRequestReader(ctx, http.MethodPost, apiURL+"/uploads/"+us.Id, file, nil)
-	if err != nil {
-		return fmt.Errorf("failed to upload data: %w", err)
-	}
-	defer resp.Body.Close()
-	cancelCtx()
-
-	// TODO (MM-48545): handle upload resumption.
-
 	var fi model.FileInfo
-	if err := json.NewDecoder(resp.Body).Decode(&fi); err != nil {
-		return fmt.Errorf("failed to decode response body: %w", err)
+	for {
+		ctx, cancelCtx = context.WithTimeout(context.Background(), httpUploadTimeout)
+		defer cancelCtx()
+		resp, err = rec.client.DoAPIRequestReader(ctx, http.MethodPost, apiURL+"/uploads/"+us.Id, file, nil)
+		if err != nil {
+			return fmt.Errorf("failed to upload data: %w", err)
+		}
+		defer resp.Body.Close()
+		cancelCtx()
+
+		// Check whether we need to resume the upload. This can happen in case the
+		// FileSettings.MaxFileSize server config value is less than the recording file size.
+		// In such cases we'll be uploading in chunks of at most FileSettings.MaxFileSize.
+		if resp.StatusCode == http.StatusNoContent {
+			ctx, cancelCtx := context.WithTimeout(context.Background(), httpRequestTimeout)
+			defer cancelCtx()
+			resp, err := rec.client.DoAPIRequest(ctx, http.MethodGet, apiURL+"/uploads/"+us.Id, "", "")
+			if err != nil {
+				return fmt.Errorf("failed to get upload: %w", err)
+			}
+			defer resp.Body.Close()
+			cancelCtx()
+
+			if err := json.NewDecoder(resp.Body).Decode(&us); err != nil {
+				return fmt.Errorf("failed to decode response body: %w", err)
+			}
+
+			slog.Info("resuming upload",
+				slog.String("upload_id", us.Id),
+				slog.Int64("offset", us.FileOffset),
+				slog.Int64("size", us.FileSize))
+
+			file, err = os.Open(rec.outPath)
+			if err != nil {
+				return fmt.Errorf("failed to open file: %w", err)
+			}
+			defer file.Close()
+
+			if _, err := file.Seek(us.FileOffset, io.SeekStart); err != nil {
+				return fmt.Errorf("failed to seek file at offset: %w", err)
+			}
+
+			continue
+		}
+
+		if err := json.NewDecoder(resp.Body).Decode(&fi); err != nil {
+			return fmt.Errorf("failed to decode response body: %w", err)
+		}
+
+		break
 	}
 
 	payload, err = json.Marshal(public.JobInfo{
