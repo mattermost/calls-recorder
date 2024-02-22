@@ -163,6 +163,9 @@ test: go-test ## to test
 
 docker-build: ## to build the docker image
 	@$(INFO) Performing Docker build ${APP_NAME}:${APP_VERSION} for ${DOCKER_BUILD_PLATFORMS}
+ifeq ($(CI),true)
+	$(AT)$(DOCKER) buildx create --name multiarch --use
+endif
 	$(AT)$(DOCKER) buildx build \
 	--platform ${DOCKER_BUILD_PLATFORMS} \
 	--output=type=${DOCKER_BUILD_OUTPUT_TYPE} \
