@@ -47,6 +47,8 @@ DOCKER_OPTS             += --rm -u $$(id -u):$$(id -g) --platform "linux/amd64"
 # Registry to upload images
 DOCKER_REGISTRY         ?= docker.io
 DOCKER_REGISTRY_REPO    ?= mattermost/${APP_NAME}-daily
+DOCKER_TAG              ?= ${APP_NAME}:${APP_VERSION}
+
 # Registry credentials
 DOCKER_USER             ?= user
 DOCKER_PASSWORD         ?= password
@@ -64,6 +66,8 @@ DOCKER_BUILD_OUTPUT_TYPE := "docker"
 # When running on CI we want to use our official release targets.
 ifeq ($(CI),true)
 DOCKER_BUILD_PLATFORMS   := "linux/amd64,linux/arm64"
+DOCKER_BUILD_OUTPUT_TYPE := "registry"
+DOCKER_TAG               :=  ${DOCKER_REGISTRY}/${DOCKER_REGISTRY_REPO}:${APP_VERSION}
 endif
 
 ## Cosign Variables
@@ -147,7 +151,7 @@ build: go-build-docker ## to build
 release: build github-release ## to build and release artifacts
 
 .PHONY: package
-package: docker-login docker-build docker-push ## to build, package and push the artifact to a container registry
+package: docker-login docker-build ## to build, package and push the artifact to a container registry
 
 .PHONY: sign
 sign: docker-sign docker-verify ## to sign the artifact and perform verification
@@ -170,22 +174,8 @@ endif
 	--output=type=${DOCKER_BUILD_OUTPUT_TYPE} \
 	--build-arg GO_VERSION=${GO_VERSION} \
 	-f ${DOCKER_FILE} . \
-	-t ${APP_NAME}:${APP_VERSION} || ${FAIL}
+	-t ${DOCKER_TAG} || ${FAIL}
 	@$(OK) Performing Docker build ${APP_NAME}:${APP_VERSION}
-
-.PHONY: docker-push
-docker-push: ## to push the docker image
-	@$(INFO) Pushing to registry...
-	$(AT)$(DOCKER) tag ${APP_NAME}:${APP_VERSION} $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:${APP_VERSION} || ${FAIL}
-	$(AT)$(DOCKER) push $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:${APP_VERSION} || ${FAIL}
-# if we are on a latest semver APP_VERSION tag, also push latest
-ifneq ($(shell echo $(APP_VERSION) | egrep '^v([0-9]+\.){0,2}(\*|[0-9]+)'),)
-  ifeq ($(shell git tag -l --sort=v:refname | tail -n1),$(APP_VERSION))
-	$(AT)$(DOCKER) tag ${APP_NAME}:${APP_VERSION} $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:latest || ${FAIL}
-	$(AT)$(DOCKER) push $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:latest || ${FAIL}
-  endif
-endif
-	@$(OK) Pushing to registry $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:${APP_VERSION}
 
 .PHONY: docker-sign
 docker-sign: ## to sign the docker image
