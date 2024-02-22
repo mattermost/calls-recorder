@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -120,4 +122,39 @@ func (rec *Recorder) getFilenameForCall(ext string) (string, error) {
 	}
 
 	return filename + "." + ext, nil
+}
+
+type clientTransport struct {
+	transport http.RoundTripper
+}
+
+func (ct *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	res, err := ct.transport.RoundTrip(req)
+	if err != nil {
+		slog.Error("request failed with error",
+			slog.String("err", err.Error()),
+			slog.Any("url", req.URL),
+			slog.String("method", req.Method),
+		)
+	} else if res != nil && res.StatusCode >= 300 {
+		defer res.Body.Close()
+		buf := &bytes.Buffer{}
+		_, err := buf.ReadFrom(res.Body)
+		if err != nil {
+			slog.Error("failed to read response body",
+				slog.String("err", err.Error()),
+				slog.Any("url", req.URL),
+				slog.String("method", req.Method),
+			)
+		}
+		slog.Error("request failed with failure status code",
+			slog.Int("code", res.StatusCode),
+			slog.Any("url", req.URL),
+			slog.String("method", req.Method),
+			slog.String("data", buf.String()),
+		)
+		res.Body = io.NopCloser(buf)
+	}
+
+	return res, err
 }
