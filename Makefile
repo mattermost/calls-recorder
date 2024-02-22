@@ -64,7 +64,6 @@ DOCKER_BUILD_OUTPUT_TYPE := "docker"
 # When running on CI we want to use our official release targets.
 ifeq ($(CI),true)
 DOCKER_BUILD_PLATFORMS   := "linux/amd64,linux/arm64"
-DOCKER_BUILD_OUTPUT_TYPE := "registry"
 endif
 
 ## Cosign Variables
