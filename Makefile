@@ -62,6 +62,8 @@ DOCKER_IMAGE_GH_CLI     += "ghcr.io/supportpal/github-gh-cli:2.31.0@sha256:71371
 # When running locally we default to the current architecture.
 DOCKER_BUILD_PLATFORMS   := "${OS}/${ARCH}"
 DOCKER_BUILD_OUTPUT_TYPE := "docker"
+DOCKER_BUILDER           := "multiarch"
+DOCKER_BUILDER_MISSING   := $(shell docker buildx inspect ${DOCKER_BUILDER} > /dev/null 2>&1; echo $$?)
 
 # When running on CI we want to use our official release targets.
 ifeq ($(CI),true)
@@ -166,8 +168,11 @@ test: go-test ## to test
 
 docker-build: ## to build the docker image
 	@$(INFO) Performing Docker build ${APP_NAME}:${APP_VERSION} for ${DOCKER_BUILD_PLATFORMS}
+ifeq ($(DOCKER_BUILDER_MISSING),1)
 ifeq ($(CI),true)
-	$(AT)$(DOCKER) buildx create --name multiarch --use
+	@$(INFO) Creating ${DOCKER_BUILDER} builder
+	$(AT)$(DOCKER) buildx create --name ${DOCKER_BUILDER} --use
+endif
 endif
 	$(AT)$(DOCKER) buildx build \
 	--platform ${DOCKER_BUILD_PLATFORMS} \
@@ -175,7 +180,17 @@ endif
 	--build-arg GO_VERSION=${GO_VERSION} \
 	-f ${DOCKER_FILE} . \
 	-t ${DOCKER_TAG} || ${FAIL}
-	@$(OK) Performing Docker build ${APP_NAME}:${APP_VERSION}
+	@$(OK) Performing Docker build ${APP_NAME}:${APP_VERSION} for ${DOCKER_BUILD_PLATFORMS}
+ifneq ($(shell echo $(APP_VERSION) | egrep '^v([0-9]+\.){0,2}(\*|[0-9]+)'),)
+ifeq ($(shell git tag -l --sort=v:refname | tail -n1),$(APP_VERSION))
+	$(AT)$(DOCKER) buildx build \
+	--platform ${DOCKER_BUILD_PLATFORMS} \
+	--output=type=${DOCKER_BUILD_OUTPUT_TYPE} \
+	--build-arg GO_VERSION=${GO_VERSION} \
+	-f ${DOCKER_FILE} . \
+	-t ${DOCKER_REGISTRY}/${DOCKER_REGISTRY_REPO}:latest || ${FAIL}
+endif
+endif
 
 .PHONY: docker-sign
 docker-sign: ## to sign the docker image
@@ -267,8 +282,13 @@ go-build: $(GO_BUILD_PLATFORMS_ARTIFACTS) ## to build binaries
 go-build/%:
 	@$(INFO) go build $*...
 	$(AT)target="$*"; \
-	GOOS=${OS} \
-	GOARCH=${ARCH} \
+	command="${APP_NAME}"; \
+	platform_ext="$${target#$$command-*}"; \
+	platform="$${platform_ext%.*}"; \
+	export GOOS="$${platform%%-*}"; \
+	export GOARCH="$${platform#*-}"; \
+	echo export GOOS=$${GOOS}; \
+	echo export GOARCH=$${GOARCH}; \
 	CGO_ENABLED=0 \
 	$(GO) build ${GO_BUILD_OPTS} \
 	-ldflags '${GO_LDFLAGS}' \
