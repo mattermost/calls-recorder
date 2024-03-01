@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -151,6 +152,62 @@ func TestUploadRecording(t *testing.T) {
 		})
 		err := rec.uploadRecording()
 		require.NoError(t, err)
+	})
+
+	t.Run("resumable upload", func(t *testing.T) {
+		var chunks int
+		var uploadedData bytes.Buffer
+		fileContent := "some resumable content"
+		_, err := recFile.WriteString(fileContent)
+		require.NoError(t, err)
+
+		middlewares = []middleware{
+			func(w http.ResponseWriter, r *http.Request) bool {
+				if r.URL.Path == "/plugins/com.mattermost.calls/bot/uploads" && r.Method == http.MethodPost {
+					fmt.Fprintln(w, `{"id": "uploadID"}`)
+					return true
+				}
+
+				return false
+			},
+			func(w http.ResponseWriter, r *http.Request) bool {
+				if r.URL.Path == "/plugins/com.mattermost.calls/bot/uploads/uploadID" && r.Method == http.MethodPost {
+					_, _ = uploadedData.ReadFrom(http.MaxBytesReader(w, r.Body, 5))
+
+					if chunks < 4 {
+						w.WriteHeader(http.StatusNoContent)
+						chunks++
+						return true
+					}
+
+					fmt.Fprintln(w, `{"id": "fileID"}`)
+					return true
+				}
+
+				return false
+			},
+			func(w http.ResponseWriter, r *http.Request) bool {
+				fi, _ := recFile.Stat()
+
+				if r.URL.Path == "/plugins/com.mattermost.calls/bot/uploads/uploadID" && r.Method == http.MethodGet {
+					fmt.Fprintf(w, `{"id": "uploadID", "file_offset": %d, "file_size": %d}`, chunks*5, fi.Size())
+					return true
+				}
+
+				return false
+			},
+			func(w http.ResponseWriter, r *http.Request) bool {
+				if r.URL.Path == "/plugins/com.mattermost.calls/bot/calls/8w8jorhr7j83uqr6y1st894hqe/recordings" && r.Method == http.MethodPost {
+					w.WriteHeader(200)
+					return true
+				}
+
+				return false
+			},
+		}
+		err = rec.uploadRecording()
+		require.NoError(t, err)
+		require.Equal(t, fileContent, uploadedData.String())
 	})
 }
 
