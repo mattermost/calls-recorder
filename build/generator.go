@@ -135,7 +135,7 @@ func GenPinnedPackages(pkgsNames []string, arch string) error {
 		return fmt.Errorf("failed to get packages: %w", err)
 	}
 
-	outFile, err := os.OpenFile(pkgsListPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	outFile, err := os.OpenFile(pkgsListPath+"_"+arch, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return fmt.Errorf("failed to open output file: %w", err)
 	}
@@ -159,14 +159,19 @@ func parsePkgsList(data string) []string {
 }
 
 func main() {
-	data, err := os.ReadFile(pkgsListPath)
+	arch := runtime.GOARCH
+	if len(os.Args) > 1 {
+		arch = os.Args[1]
+	}
+
+	data, err := os.ReadFile(pkgsListPath + "_" + arch)
 	if err != nil {
 		log.Fatalf("failed to read packages file: %s", err)
 	}
 
-	log.Printf("arch=%s", runtime.GOARCH)
+	log.Printf("arch=%s", arch)
 
-	if err := GenPinnedPackages(parsePkgsList(string(data)), runtime.GOARCH); err != nil {
+	if err := GenPinnedPackages(parsePkgsList(string(data)), arch); err != nil {
 		log.Fatalf("failed to generate pinned packages: %s", err)
 	}
 

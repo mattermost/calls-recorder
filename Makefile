@@ -31,6 +31,8 @@ CONFIG_APP_CODE         += ./cmd/recorder
 ifneq (, $(shell which go))
 ARCH                    ?= $(shell go version | awk '{print substr($$4,index($$4,"/")+1)}')
 endif
+# Target OS will always be linux.
+OS                      := linux
 # Fallback to amd64 if ARCH is still unset.
 ARCH                    ?= amd64
 
@@ -45,19 +47,29 @@ DOCKER_OPTS             += --rm -u $$(id -u):$$(id -g) --platform "linux/amd64"
 # Registry to upload images
 DOCKER_REGISTRY         ?= docker.io
 DOCKER_REGISTRY_REPO    ?= mattermost/${APP_NAME}-daily
+DOCKER_TAG              ?= ${APP_NAME}:${APP_VERSION}
+
 # Registry credentials
 DOCKER_USER             ?= user
 DOCKER_PASSWORD         ?= password
-## Docker Images
-DOCKER_IMAGE_GO         += "golang:${GO_VERSION}@sha256:b17c35044f4062d83c815434615997eed97697daae8745c6dd39dc3673b87efb"
+# Docker Images
+DOCKER_IMAGE_GO         += "golang:${GO_VERSION}"
 DOCKER_IMAGE_GOLINT     += "golangci/golangci-lint:v1.54.2@sha256:abe731fe6bb335a30eab303a41dd5c2b630bb174372a4da08e3d42eab5324127"
-DOCKER_IMAGE_DOCKERLINT += "hadolint/hadolint:v2.9.2@sha256:d355bd7df747a0f124f3b5e7b21e9dafd0cb19732a276f901f0fdee243ec1f3b"
+DOCKER_IMAGE_DOCKERLINT += "hadolint/hadolint:v2.12.0@sha256:9259e253a4e299b50c92006149dd3a171c7ea3c5bd36f060022b5d2c1ff0fbbe"
 DOCKER_IMAGE_COSIGN     += "bitnami/cosign:1.8.0@sha256:8c2c61c546258fffff18b47bb82a65af6142007306b737129a7bd5429d53629a"
 DOCKER_IMAGE_GH_CLI     += "ghcr.io/supportpal/github-gh-cli:2.31.0@sha256:71371e36e62bd24ddd42d9e4c720a7e9954cb599475e24d1407af7190e2a5685"
 
-DOCKER_IMAGE_RUNNER     := "debian:sid-20230109@sha256:c7caaec69b8b2d56332fb0860252e7865f6900f8031c845ae8f5f16045c619bd"
-ifeq ($(ARCH),arm64)
-	DOCKER_IMAGE_RUNNER="arm64v8/debian:sid-20230109@sha256:518e58d25b6ec2ed341247fbcd0c1cd992de98b8323568164a588ec34f588aec"
+# When running locally we default to the current architecture.
+DOCKER_BUILD_PLATFORMS   := "${OS}/${ARCH}"
+DOCKER_BUILD_OUTPUT_TYPE := "docker"
+DOCKER_BUILDER           := "multiarch"
+DOCKER_BUILDER_MISSING   := $(shell docker buildx inspect ${DOCKER_BUILDER} > /dev/null 2>&1; echo $$?)
+
+# When running on CI we want to use our official release targets.
+ifeq ($(CI),true)
+DOCKER_BUILD_PLATFORMS   := "linux/amd64,linux/arm64"
+DOCKER_BUILD_OUTPUT_TYPE := "registry"
+DOCKER_TAG               :=  ${DOCKER_REGISTRY}/${DOCKER_REGISTRY_REPO}:${APP_VERSION}
 endif
 
 ## Cosign Variables
@@ -79,7 +91,7 @@ GO_LDFLAGS                   += -X "github.com/mattermost/${APP_NAME}/service.bu
 GO_LDFLAGS                   += -X "github.com/mattermost/${APP_NAME}/service.buildDate=$(BUILD_DATE)"
 GO_LDFLAGS                   += -X "github.com/mattermost/${APP_NAME}/service.goVersion=$(GO_VERSION)"
 # Architectures to build for
-GO_BUILD_PLATFORMS           ?= linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 freebsd-amd64
+GO_BUILD_PLATFORMS           ?= linux-amd64 linux-arm64
 GO_BUILD_PLATFORMS_ARTIFACTS = $(foreach cmd,$(addprefix go-build/,${APP_NAME}),$(addprefix $(cmd)-,$(GO_BUILD_PLATFORMS)))
 # Build options
 GO_BUILD_OPTS                += -mod=readonly -trimpath
@@ -141,7 +153,7 @@ build: go-build-docker ## to build
 release: build github-release ## to build and release artifacts
 
 .PHONY: package
-package: docker-login docker-build docker-push ## to build, package and push the artifact to a container registry
+package: docker-login docker-build ## to build, package and push the artifact to a container registry
 
 .PHONY: sign
 sign: docker-sign docker-verify ## to sign the artifact and perform verification
@@ -155,28 +167,30 @@ test: go-test ## to test
 .PHONY: docker-build
 
 docker-build: ## to build the docker image
-	@$(INFO) Performing Docker build ${APP_NAME}:${APP_VERSION} for ${ARCH}
-	$(AT)$(DOCKER) build \
-	--build-arg GO_IMAGE=${DOCKER_IMAGE_GO} \
-	--build-arg ARCH=${ARCH} \
-	--build-arg RUNNER_IMAGE=${DOCKER_IMAGE_RUNNER} \
-	-f ${DOCKER_FILE} . \
-	-t ${APP_NAME}:${APP_VERSION} || ${FAIL}
-	@$(OK) Performing Docker build ${APP_NAME}:${APP_VERSION}
-
-.PHONY: docker-push
-docker-push: ## to push the docker image
-	@$(INFO) Pushing to registry...
-	$(AT)$(DOCKER) tag ${APP_NAME}:${APP_VERSION} $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:${APP_VERSION} || ${FAIL}
-	$(AT)$(DOCKER) push $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:${APP_VERSION} || ${FAIL}
-# if we are on a latest semver APP_VERSION tag, also push latest
-ifneq ($(shell echo $(APP_VERSION) | egrep '^v([0-9]+\.){0,2}(\*|[0-9]+)'),)
-  ifeq ($(shell git tag -l --sort=v:refname | tail -n1),$(APP_VERSION))
-	$(AT)$(DOCKER) tag ${APP_NAME}:${APP_VERSION} $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:latest || ${FAIL}
-	$(AT)$(DOCKER) push $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:latest || ${FAIL}
-  endif
+	@$(INFO) Performing Docker build ${APP_NAME}:${APP_VERSION} for ${DOCKER_BUILD_PLATFORMS}
+ifeq ($(DOCKER_BUILDER_MISSING),1)
+ifeq ($(CI),true)
+	@$(INFO) Creating ${DOCKER_BUILDER} builder
+	$(AT)$(DOCKER) buildx create --name ${DOCKER_BUILDER} --use
 endif
-	@$(OK) Pushing to registry $(DOCKER_REGISTRY)/${DOCKER_REGISTRY_REPO}:${APP_VERSION}
+endif
+	$(AT)$(DOCKER) buildx build \
+	--platform ${DOCKER_BUILD_PLATFORMS} \
+	--output=type=${DOCKER_BUILD_OUTPUT_TYPE} \
+	--build-arg GO_VERSION=${GO_VERSION} \
+	-f ${DOCKER_FILE} . \
+	-t ${DOCKER_TAG} || ${FAIL}
+	@$(OK) Performing Docker build ${APP_NAME}:${APP_VERSION} for ${DOCKER_BUILD_PLATFORMS}
+ifneq ($(shell echo $(APP_VERSION) | egrep '^v([0-9]+\.){0,2}(\*|[0-9]+)'),)
+ifeq ($(shell git tag -l --sort=v:refname | tail -n1),$(APP_VERSION))
+	$(AT)$(DOCKER) buildx build \
+	--platform ${DOCKER_BUILD_PLATFORMS} \
+	--output=type=${DOCKER_BUILD_OUTPUT_TYPE} \
+	--build-arg GO_VERSION=${GO_VERSION} \
+	-f ${DOCKER_FILE} . \
+	-t ${DOCKER_REGISTRY}/${DOCKER_REGISTRY_REPO}:latest || ${FAIL}
+endif
+endif
 
 .PHONY: docker-sign
 docker-sign: ## to sign the docker image
@@ -363,7 +377,7 @@ endif
 
 .PHONY: go-pinned-packages
 go-pinned-packages: ## to update pinned packages list for the Ubuntu based Docker image
-	cd build && go run generator.go; cd ..
+	cd build && go run generator.go amd64 && go run generator.go arm64; cd ..
 
 .PHONY: clean
 clean: ## to clean-up
