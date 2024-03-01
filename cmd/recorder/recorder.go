@@ -65,56 +65,9 @@ type Recorder struct {
 }
 
 func (rec *Recorder) runBrowser(recURL string) (rerr error) {
-	opts := []chromedp.ExecAllocatorOption{
-		chromedp.NoFirstRun,
-		chromedp.NoDefaultBrowserCheck,
-		chromedp.DisableGPU,
-
-		// puppeteer default behavior
-		chromedp.Flag("disable-infobars", true),
-		chromedp.Flag("disable-background-networking", true),
-		chromedp.Flag("enable-features", "NetworkService,NetworkServiceInProcess"),
-		chromedp.Flag("disable-background-timer-throttling", true),
-		chromedp.Flag("disable-backgrounding-occluded-windows", true),
-		chromedp.Flag("disable-breakpad", true),
-		chromedp.Flag("disable-client-side-phishing-detection", true),
-		chromedp.Flag("disable-default-apps", true),
-		chromedp.Flag("disable-dev-shm-usage", true),
-		chromedp.Flag("disable-extensions", true),
-		chromedp.Flag("disable-features", "site-per-process,TranslateUI,BlinkGenPropertyTrees"),
-		chromedp.Flag("disable-hang-monitor", true),
-		chromedp.Flag("disable-ipc-flooding-protection", true),
-		chromedp.Flag("disable-popup-blocking", true),
-		chromedp.Flag("disable-prompt-on-repost", true),
-		chromedp.Flag("disable-renderer-backgrounding", true),
-		chromedp.Flag("disable-sync", true),
-		chromedp.Flag("force-color-profile", "srgb"),
-		chromedp.Flag("metrics-recording-only", true),
-		chromedp.Flag("safebrowsing-disable-auto-update", true),
-		chromedp.Flag("password-store", "basic"),
-		chromedp.Flag("use-mock-keychain", true),
-		chromedp.Flag("use-fake-ui-for-media-stream", true),
-		chromedp.Flag("use-fake-device-for-media-stream", true),
-
-		// custom args
-		chromedp.Flag("incognito", true),
-		chromedp.Flag("kiosk", true),
-		chromedp.Flag("enable-automation", false),
-		chromedp.Flag("autoplay-policy", "no-user-gesture-required"),
-		chromedp.Flag("window-position", "0,0"),
-		chromedp.Flag("window-size", fmt.Sprintf("%d,%d", rec.cfg.Width, rec.cfg.Height)),
-		chromedp.Flag("display", fmt.Sprintf(":%d", displayID)),
-	}
-
-	contextOpts := []chromedp.ContextOption{
-		chromedp.WithErrorf(slogDebugF),
-	}
-	if devMode := os.Getenv("DEV_MODE"); devMode == "true" {
-		opts = append(opts, chromedp.Flag("unsafely-treat-insecure-origin-as-secure",
-			"http://172.17.0.1:8065,http://host.docker.internal:8065,http://mm-server:8065,http://host.minikube.internal:8065"))
-		opts = append(opts, chromedp.NoSandbox)
-		contextOpts = append(contextOpts, chromedp.WithLogf(slogDebugF))
-		contextOpts = append(contextOpts, chromedp.WithDebugf(slogDebugF))
+	opts, contextOpts, err := genChromiumOptions(rec.cfg)
+	if err != nil {
+		return fmt.Errorf("failed to generate Chromium options: %w", err)
 	}
 
 	allocCtx, _ := chromedp.NewExecAllocator(context.Background(), opts...)
