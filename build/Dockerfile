@@ -1,22 +1,20 @@
 # This dockerfile is used to build Mattermost calls-recorder
 # A multi stage build, with golang used as a builder
-# and ubuntu:22.04 as runner
-ARG GO_IMAGE=golang:1.21@sha256:b17c35044f4062d83c815434615997eed97697daae8745c6dd39dc3673b87efb
-ARG ARCH
-ARG RUNNER_IMAGE
-
-FROM ${RUNNER_IMAGE:?} as base
+# and debian sid as runner
+ARG GO_VERSION
+FROM --platform=$TARGETPLATFORM debian:sid-20231120 as base
 
 # Setup system dependencies
 WORKDIR /workdir
 
+ARG TARGETARCH
 ARG DEBIAN_FRONTEND=noninteractive
 
-COPY ./build/pkgs_list .
+COPY ./build/pkgs_list* .
 # hadolint ignore=DL3008,SC2046
 RUN set -ex && \
     apt-get update && \
-    apt-get install --no-install-recommends -y $(cat pkgs_list) && \
+    apt-get install --no-install-recommends -y $(cat pkgs_list_${TARGETARCH}) && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     adduser root pulse-access && \
@@ -25,12 +23,13 @@ RUN set -ex && \
 # Create unprivileged user to run the recorder process
 RUN groupadd -r calls && useradd -mr -g calls -G audio,video,pulse-access calls
 
-# hadolint ignore=DL3006
-FROM ${GO_IMAGE} as builder
-ARG ARCH
+ARG GO_VERSION
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION} as builder
+ARG TARGETOS
+ARG TARGETARCH
 
 #GO_BUILD_PLATFORMS holds the platforms that we will build the docker image against
-ARG GO_BUILD_PLATFORMS=linux-${ARCH:?}
+ARG GO_BUILD_PLATFORMS=${TARGETOS}-${TARGETARCH}
 
 # Setup directories structure and compile
 COPY . /src
@@ -38,8 +37,9 @@ WORKDIR /src
 RUN make go-build
 
 FROM base AS runner
-ARG ARCH
-COPY --from=builder /src/dist/calls-recorder-linux-${ARCH:?} /opt/calls-recorder/bin/calls-recorder
+ARG TARGETOS
+ARG TARGETARCH
+COPY --from=builder /src/dist/calls-recorder-${TARGETOS}-${TARGETARCH} /opt/calls-recorder/bin/calls-recorder
 
 # copy binary
 COPY ./build/entrypoint.sh .
