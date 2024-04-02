@@ -2,7 +2,7 @@
 # A multi stage build, with golang used as a builder
 # and debian sid as runner
 ARG GO_VERSION
-FROM --platform=$TARGETPLATFORM debian:sid-20231120 as base
+FROM --platform=$TARGETPLATFORM debian:sid-20240330 as base
 
 # Setup system dependencies
 WORKDIR /workdir
@@ -14,7 +14,6 @@ COPY ./build/pkgs_list* .
 # hadolint ignore=DL3008,SC2046
 RUN set -ex && \
     apt-get update && \
-    apt-get upgrade -y && \
     apt-get install --no-install-recommends -y $(cat pkgs_list_${TARGETARCH}) && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
