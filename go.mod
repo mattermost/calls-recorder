@@ -1,6 +1,6 @@
 module github.com/mattermost/calls-recorder
 
-go 1.21.4
+go 1.22.7
 
 require (
 	github.com/chromedp/cdproto v0.0.0-20230828023241-f357fd93b5d6

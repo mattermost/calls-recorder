@@ -54,7 +54,7 @@ DOCKER_USER             ?= user
 DOCKER_PASSWORD         ?= password
 # Docker Images
 DOCKER_IMAGE_GO         += "golang:${GO_VERSION}"
-DOCKER_IMAGE_GOLINT     += "golangci/golangci-lint:v1.54.2@sha256:abe731fe6bb335a30eab303a41dd5c2b630bb174372a4da08e3d42eab5324127"
+DOCKER_IMAGE_GOLINT     += "golangci/golangci-lint:v1.60.0@sha256:e47065d755ca0afeac9df866d1dabdc99f439653a43fe234e05f50d9c36b6b90"
 DOCKER_IMAGE_DOCKERLINT += "hadolint/hadolint:v2.12.0@sha256:9259e253a4e299b50c92006149dd3a171c7ea3c5bd36f060022b5d2c1ff0fbbe"
 DOCKER_IMAGE_COSIGN     += "bitnami/cosign:1.8.0@sha256:8c2c61c546258fffff18b47bb82a65af6142007306b737129a7bd5429d53629a"
 DOCKER_IMAGE_GH_CLI     += "ghcr.io/supportpal/github-gh-cli:2.31.0@sha256:71371e36e62bd24ddd42d9e4c720a7e9954cb599475e24d1407af7190e2a5685"
