@@ -91,11 +91,11 @@ func pollBrowserEvaluateExpr(ctx context.Context, expr string, interval, timeout
 	}
 }
 
-func getDataDir() string {
+func getDataDir(jobID string) string {
 	if dir := os.Getenv("DATA_DIR"); dir != "" {
-		return dir
+		return filepath.Join(dir, jobID)
 	}
-	return dataDir
+	return filepath.Join(dataDir, jobID)
 }
 
 func sanitizeFilename(name string) string {

@@ -38,7 +38,7 @@ func TestUploadRecording(t *testing.T) {
 		AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
 	}
 	cfg.SetDefaults()
-	rec, err := NewRecorder(cfg)
+	rec, err := NewRecorder(cfg, getDataDir(""))
 	require.NoError(t, err)
 	require.NotNil(t, rec)
 
@@ -237,7 +237,7 @@ func TestPublishRecording(t *testing.T) {
 		AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
 	}
 	cfg.SetDefaults()
-	rec, err := NewRecorder(cfg)
+	rec, err := NewRecorder(cfg, getDataDir(""))
 	require.NoError(t, err)
 	require.NotNil(t, rec)
 
