@@ -10,8 +10,23 @@ import (
 
 func TestNewRecorder(t *testing.T) {
 	t.Run("invalid config", func(t *testing.T) {
-		rec, err := NewRecorder(config.RecorderConfig{})
+		rec, err := NewRecorder(config.RecorderConfig{}, getDataDir(""))
 		require.EqualError(t, err, "invalid config: config cannot be empty")
+		require.Nil(t, rec)
+	})
+
+	t.Run("invalid data path", func(t *testing.T) {
+		cfg := config.RecorderConfig{
+			SiteURL:     "http://localhost:8065",
+			CallID:      "8w8jorhr7j83uqr6y1st894hqe",
+			PostID:      "udzdsg7dwidbzcidx5khrf8nee",
+			RecordingID: "67t5u6cmtfbb7jug739d43xa9e",
+			AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
+		}
+		cfg.SetDefaults()
+
+		rec, err := NewRecorder(cfg, "")
+		require.EqualError(t, err, "data path cannot be empty")
 		require.Nil(t, rec)
 	})
 
@@ -24,7 +39,7 @@ func TestNewRecorder(t *testing.T) {
 			AuthToken:   "qj75unbsef83ik9p7ueypb6iyw",
 		}
 		cfg.SetDefaults()
-		rec, err := NewRecorder(cfg)
+		rec, err := NewRecorder(cfg, getDataDir(""))
 		require.NoError(t, err)
 		require.NotNil(t, rec)
 	})

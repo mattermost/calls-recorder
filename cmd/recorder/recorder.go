@@ -47,6 +47,9 @@ const (
 type Recorder struct {
 	cfg config.RecorderConfig
 
+	// path to write recording file
+	dataPath string
+
 	// browser
 	readyCh   chan struct{}
 	stopCh    chan struct{}
@@ -270,9 +273,13 @@ func runDisplayServer(width, height int) (*exec.Cmd, error) {
 	return runCmd("Xvfb", args)
 }
 
-func NewRecorder(cfg config.RecorderConfig) (*Recorder, error) {
+func NewRecorder(cfg config.RecorderConfig, dataPath string) (*Recorder, error) {
 	if err := cfg.IsValid(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
+	}
+
+	if dataPath == "" {
+		return nil, fmt.Errorf("data path cannot be empty")
 	}
 
 	client := model.NewAPIv4Client(cfg.SiteURL)
@@ -285,6 +292,7 @@ func NewRecorder(cfg config.RecorderConfig) (*Recorder, error) {
 
 	return &Recorder{
 		cfg:                 cfg,
+		dataPath:            dataPath,
 		readyCh:             make(chan struct{}),
 		stopCh:              make(chan struct{}),
 		stoppedCh:           make(chan error),
@@ -302,7 +310,7 @@ func (rec *Recorder) Start() error {
 	if err != nil {
 		return fmt.Errorf("failed to get filename for call: %w", err)
 	}
-	rec.outPath = filepath.Join(getDataDir(), filename)
+	rec.outPath = filepath.Join(rec.dataPath, filename)
 
 	rec.displayServer, err = runDisplayServer(rec.cfg.Width, rec.cfg.Height)
 	if err != nil {

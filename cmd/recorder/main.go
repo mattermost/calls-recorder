@@ -2,20 +2,42 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/mattermost/calls-recorder/cmd/recorder/config"
 )
 
 func main() {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+	recID := os.Getenv("RECORDING_ID")
+
+	// Create scoped (by jobID) data path
+	dataPath := getDataDir(recID)
+	err := os.MkdirAll(dataPath, 0700)
+	if err != nil {
+		slog.Error("failed to create data path", slog.String("err", err.Error()))
+		os.Exit(1)
+	}
+
+	logFile, err := os.Create(filepath.Join(dataPath, "recorder.log"))
+	if err != nil {
+		slog.Error("failed to create log file", slog.String("err", err.Error()))
+		os.Exit(1)
+	}
+	defer logFile.Close()
+
+	// This lets us write logs simultaneously to console and file.
+	logWriter := io.MultiWriter(os.Stdout, logFile)
+
+	logger := slog.New(slog.NewTextHandler(logWriter, &slog.HandlerOptions{
 		AddSource:   true,
 		Level:       slog.LevelDebug,
 		ReplaceAttr: slogReplaceAttr,
-	})).With("recID", os.Getenv("RECORDING_ID"))
+	})).With("recID", recID)
 	slog.SetDefault(logger)
 
 	pid := os.Getpid()
@@ -33,7 +55,7 @@ func main() {
 
 	slog.SetDefault(logger.With("jobID", cfg.RecordingID))
 
-	recorder, err := NewRecorder(cfg)
+	recorder, err := NewRecorder(cfg, dataPath)
 	if err != nil {
 		slog.Error("failed to create recorder", slog.String("err", err.Error()))
 		os.Exit(1)
