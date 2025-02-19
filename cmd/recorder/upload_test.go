@@ -66,7 +66,7 @@ func TestUploadRecording(t *testing.T) {
 			},
 		}
 		err := rec.uploadRecording()
-		require.EqualError(t, err, "failed to create upload: AppErrorFromJSON: model.utils.decode_json.app_error, body: Internal Server Error\n, invalid character 'I' looking for beginning of value")
+		require.EqualError(t, err, "failed to create upload: failed to decode JSON payload into AppError. Body: Internal Server Error\n: invalid character 'I' looking for beginning of value")
 	})
 
 	t.Run("upload creation failure", func(t *testing.T) {
@@ -82,7 +82,7 @@ func TestUploadRecording(t *testing.T) {
 			},
 		}
 		err := rec.uploadRecording()
-		require.EqualError(t, err, "failed to create upload: : server error")
+		require.EqualError(t, err, "failed to create upload: server error")
 	})
 
 	t.Run("upload data failure", func(t *testing.T) {
@@ -106,7 +106,7 @@ func TestUploadRecording(t *testing.T) {
 			},
 		}
 		err := rec.uploadRecording()
-		require.EqualError(t, err, "failed to upload data: : server error")
+		require.EqualError(t, err, "failed to upload data: server error")
 	})
 
 	t.Run("save recording failure", func(t *testing.T) {
@@ -138,7 +138,7 @@ func TestUploadRecording(t *testing.T) {
 			},
 		}
 		err := rec.uploadRecording()
-		require.EqualError(t, err, "failed to save recording: : server error")
+		require.EqualError(t, err, "failed to save recording: server error")
 	})
 
 	t.Run("success", func(t *testing.T) {
