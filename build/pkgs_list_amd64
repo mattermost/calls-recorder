@@ -1,7 +1,7 @@
 ca-certificates=20250419
-chromium=136.0.7103.113-1
-chromium-driver=136.0.7103.113-1
-chromium-sandbox=136.0.7103.113-1
+chromium=137.0.7151.68-1
+chromium-driver=137.0.7151.68-1
+chromium-sandbox=137.0.7151.68-1
 ffmpeg=7:7.1.1-1+b1
 fonts-recommended=2
 pulseaudio=17.0+dfsg1-2+b1
