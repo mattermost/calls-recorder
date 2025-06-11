@@ -24,7 +24,7 @@ RUN set -ex && \
 RUN groupadd -r calls && useradd -mr -g calls -G audio,video,pulse-access calls
 
 ARG GO_VERSION
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION} as builder
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION} AS builder
 ARG TARGETOS
 ARG TARGETARCH
 

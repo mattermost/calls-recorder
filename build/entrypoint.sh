@@ -22,7 +22,7 @@ exit_handler() {
     exit 1
   fi
 
-  EXIT_CODE=`cat $RECORDER_EXIT_CODE_FILE`
+  EXIT_CODE=$(cat $RECORDER_EXIT_CODE_FILE)
 
   exit $EXIT_CODE
 }
@@ -40,7 +40,7 @@ term_handler() {
     exit 1
   fi
 
-  RECORDER_PID=`cat $RECORDER_PID_FILE`
+  RECORDER_PID=$(cat $RECORDER_PID_FILE)
 
   # Relaying the SIGTERM to the recorder's process.
   kill -SIGTERM "$RECORDER_PID"
@@ -58,8 +58,10 @@ trap 'kill ${!}; term_handler' SIGTERM
 
 RECORDER_USER=calls
 
+# Create scoped (by jobID) data path.
+mkdir -p /data/$RECORDING_ID
 # Give permission to write recording files.
-chown -R $RECORDER_USER:$RECORDER_USER /data
+chown -R $RECORDER_USER:$RECORDER_USER /data/$RECORDING_ID
 # Give permissions to home directory so that Chromium can create any
 # necessary files and directories.
 chown -R $RECORDER_USER:$RECORDER_USER /home/$RECORDER_USER
