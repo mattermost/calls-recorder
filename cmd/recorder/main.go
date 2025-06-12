@@ -15,13 +15,7 @@ import (
 func main() {
 	recID := os.Getenv("RECORDING_ID")
 
-	// Create scoped (by jobID) data path
 	dataPath := getDataDir(recID)
-	err := os.MkdirAll(dataPath, 0700)
-	if err != nil {
-		slog.Error("failed to create data path", slog.String("err", err.Error()))
-		os.Exit(1)
-	}
 
 	logFile, err := os.Create(filepath.Join(dataPath, "recorder.log"))
 	if err != nil {
