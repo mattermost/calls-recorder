@@ -24,6 +24,7 @@ import (
 
 	"github.com/mattermost/mattermost/server/public/model"
 
+	"github.com/chromedp/cdproto/network"
 	cruntime "github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 )
@@ -131,7 +132,16 @@ func (rec *Recorder) runBrowser(recURL string) (rerr error) {
 			}
 		})
 
-		if err := chromedp.Run(ctx, chromedp.Navigate(recURL)); err != nil {
+		// Set custom header for CSRF protection
+		headers := map[string]any{
+			"X-Calls-Recorder": "true",
+		}
+		tasks := chromedp.Tasks{
+			network.Enable(),
+			network.SetExtraHTTPHeaders(network.Headers(headers)),
+			chromedp.Navigate(recURL),
+		}
+		if err := chromedp.Run(ctx, tasks); err != nil {
 			slog.Error("failed to run chromedp", slog.String("err", err.Error()))
 			cancel()
 			// If we don't event get to navigate to the URL then there's no point in
