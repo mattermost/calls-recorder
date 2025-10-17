@@ -2,7 +2,7 @@
 # A multi stage build, with golang used as a builder
 # and debian sid as runner
 ARG GO_VERSION
-FROM --platform=$TARGETPLATFORM debian:sid-20250224 AS base
+FROM --platform=$TARGETPLATFORM debian:sid-20250929 AS base
 
 # Setup system dependencies
 WORKDIR /workdir
