@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -294,9 +296,27 @@ func NewRecorder(cfg config.RecorderConfig, dataPath string) (*Recorder, error) 
 
 	client := model.NewAPIv4Client(cfg.SiteURL)
 	client.SetToken(cfg.AuthToken)
+
+	// Custom transport with optional CA certificate
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if cfg.TLSCACertFile != "" {
+		caCert, err := os.ReadFile(cfg.TLSCACertFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read CA certificate: %w", err)
+		}
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			return nil, fmt.Errorf("failed to parse CA certificate")
+		}
+		transport.TLSClientConfig = &tls.Config{
+			RootCAs: caCertPool,
+		}
+		slog.Info("loaded CA certificate for TLS", slog.String("path", cfg.TLSCACertFile))
+	}
+
 	client.HTTPClient = &http.Client{
 		Transport: &clientTransport{
-			transport: http.DefaultTransport,
+			transport: transport,
 		},
 	}
 

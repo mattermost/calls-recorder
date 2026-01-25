@@ -84,6 +84,8 @@ runuser -l $RECORDER_USER -c \
   VIDEO_PRESET=${VIDEO_PRESET:-} \
   OUTPUT_FORMAT=${OUTPUT_FORMAT:-} \
   DEV_MODE=${DEV_MODE:-false} \
+  EXTRA_CHROMIUM_ARGS=${EXTRA_CHROMIUM_ARGS:-} \
+  TLS_CA_CERT_FILE=${TLS_CA_CERT_FILE:-} \
   XDG_RUNTIME_DIR=/home/$RECORDER_USER/.cache/xdgr \
   /bin/bash -c '/opt/calls-recorder/bin/calls-recorder; echo \$? > ${RECORDER_EXIT_CODE_FILE}'" &
 

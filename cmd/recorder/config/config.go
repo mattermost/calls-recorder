@@ -67,6 +67,9 @@ type RecorderConfig struct {
 	FrameRate    int
 	VideoPreset  H264Preset
 	OutputFormat AVFormat
+
+	// TLS config
+	TLSCACertFile string
 }
 
 func (p H264Preset) IsValid() bool {
@@ -315,6 +318,8 @@ func LoadFromEnv() (RecorderConfig, error) {
 	if val := os.Getenv("OUTPUT_FORMAT"); val != "" {
 		cfg.OutputFormat = AVFormat(val)
 	}
+
+	cfg.TLSCACertFile = os.Getenv("TLS_CA_CERT_FILE")
 
 	return cfg, nil
 }
