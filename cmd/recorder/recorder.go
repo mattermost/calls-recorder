@@ -299,7 +299,14 @@ func NewRecorder(cfg config.RecorderConfig, dataPath string) (*Recorder, error) 
 
 	// Custom transport with optional CA certificate
 	transport := http.DefaultTransport.(*http.Transport).Clone()
-	if cfg.TLSCACertFile != "" {
+
+	// Configure TLS based on provided settings
+	if cfg.TLSInsecureSkipVerify {
+		slog.Warn("TLS certificate verification is disabled - this should only be used in trusted environments")
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true,
+		}
+	} else if cfg.TLSCACertFile != "" {
 		caCert, err := os.ReadFile(cfg.TLSCACertFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read CA certificate: %w", err)
