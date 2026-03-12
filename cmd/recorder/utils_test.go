@@ -160,6 +160,42 @@ func TestGenChromiumOptions(t *testing.T) {
 		require.Len(t, opts, 36)
 		require.Len(t, ctxOpts, 3)
 	})
+
+	t.Run("extra chromium args - boolean flag", func(t *testing.T) {
+		os.Setenv("EXTRA_CHROMIUM_ARGS", "--ignore-certificate-errors")
+		defer os.Unsetenv("EXTRA_CHROMIUM_ARGS")
+		var cfg config.RecorderConfig
+		cfg.SetDefaults()
+		cfg.SiteURL = "https://mm-server"
+		opts, ctxOpts, err := genChromiumOptions(cfg)
+		require.NoError(t, err)
+		require.Len(t, opts, 35) // 34 base + 1 extra
+		require.Len(t, ctxOpts, 1)
+	})
+
+	t.Run("extra chromium args - key=value flag", func(t *testing.T) {
+		os.Setenv("EXTRA_CHROMIUM_ARGS", "--proxy-server=http://proxy:8080")
+		defer os.Unsetenv("EXTRA_CHROMIUM_ARGS")
+		var cfg config.RecorderConfig
+		cfg.SetDefaults()
+		cfg.SiteURL = "https://mm-server"
+		opts, ctxOpts, err := genChromiumOptions(cfg)
+		require.NoError(t, err)
+		require.Len(t, opts, 35) // 34 base + 1 extra
+		require.Len(t, ctxOpts, 1)
+	})
+
+	t.Run("extra chromium args - multiple flags", func(t *testing.T) {
+		os.Setenv("EXTRA_CHROMIUM_ARGS", "--ignore-certificate-errors --proxy-server=http://proxy:8080")
+		defer os.Unsetenv("EXTRA_CHROMIUM_ARGS")
+		var cfg config.RecorderConfig
+		cfg.SetDefaults()
+		cfg.SiteURL = "https://mm-server"
+		opts, ctxOpts, err := genChromiumOptions(cfg)
+		require.NoError(t, err)
+		require.Len(t, opts, 36) // 34 base + 2 extra
+		require.Len(t, ctxOpts, 1)
+	})
 }
 
 func TestGetInsecureOrigins(t *testing.T) {
