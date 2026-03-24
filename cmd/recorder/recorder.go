@@ -311,13 +311,17 @@ func NewRecorder(cfg config.RecorderConfig, dataPath string) (*Recorder, error) 
 		if err != nil {
 			return nil, fmt.Errorf("failed to read CA certificate: %w", err)
 		}
-		caCertPool := x509.NewCertPool()
+		caCertPool, err := x509.SystemCertPool()
+		if err != nil {
+			caCertPool = x509.NewCertPool()
+		}
 		if !caCertPool.AppendCertsFromPEM(caCert) {
 			return nil, fmt.Errorf("failed to parse CA certificate")
 		}
 		transport.TLSClientConfig = &tls.Config{
 			RootCAs: caCertPool,
 		}
+		transport.ForceAttemptHTTP2 = true
 		slog.Info("loaded CA certificate for TLS", slog.String("path", cfg.TLSCACertFile))
 	}
 

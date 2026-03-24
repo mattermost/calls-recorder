@@ -4,9 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/mattermost/mattermost-plugin-calls/server/public"
+)
+
+const (
+	postJobStatusMaxRetries = 2
+	postJobStatusRetryDelay = 2 * time.Second
 )
 
 func (rec *Recorder) postJobStatus(status public.JobStatus) error {
@@ -18,16 +25,23 @@ func (rec *Recorder) postJobStatus(status public.JobStatus) error {
 		return fmt.Errorf("failed to marshal: %w", err)
 	}
 
-	ctx, cancelCtx := context.WithTimeout(context.Background(), httpRequestTimeout)
-	defer cancelCtx()
-	resp, err := rec.client.DoAPIRequestBytes(ctx, http.MethodPost, apiURL, payload, "")
-	if err != nil {
-		return fmt.Errorf("request failed: %w", err)
+	var lastErr error
+	for attempt := 0; attempt <= postJobStatusMaxRetries; attempt++ {
+		if attempt > 0 {
+			slog.Warn("postJobStatus failed, retrying", slog.Int("attempt", attempt), slog.String("err", lastErr.Error()))
+			time.Sleep(postJobStatusRetryDelay)
+		}
+		ctx, cancelCtx := context.WithTimeout(context.Background(), httpRequestTimeout)
+		resp, err := rec.client.DoAPIRequestBytes(ctx, http.MethodPost, apiURL, payload, "")
+		cancelCtx()
+		if err == nil {
+			resp.Body.Close()
+			return nil
+		}
+		lastErr = err
 	}
-	defer resp.Body.Close()
-	cancelCtx()
 
-	return nil
+	return fmt.Errorf("request failed: %w", lastErr)
 }
 
 func (rec *Recorder) ReportJobFailure(errMsg string) error {
