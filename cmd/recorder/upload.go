@@ -82,11 +82,11 @@ func (rec *Recorder) uploadRecording() error {
 		return fmt.Errorf("failed to create upload: %w", err)
 	}
 	defer resp.Body.Close()
-	cancelCtx()
 
 	if err := json.NewDecoder(resp.Body).Decode(&us); err != nil {
 		return fmt.Errorf("failed to decode response body: %w", err)
 	}
+	cancelCtx()
 
 	var fi model.FileInfo
 	for {
@@ -97,7 +97,6 @@ func (rec *Recorder) uploadRecording() error {
 			return fmt.Errorf("failed to upload data: %w", err)
 		}
 		defer resp.Body.Close()
-		cancelCtx()
 
 		// Check whether we need to resume the upload. This can happen in case the
 		// FileSettings.MaxFileSize server config value is less than the recording file size.
@@ -110,11 +109,11 @@ func (rec *Recorder) uploadRecording() error {
 				return fmt.Errorf("failed to get upload: %w", err)
 			}
 			defer resp.Body.Close()
-			cancelCtx()
 
 			if err := json.NewDecoder(resp.Body).Decode(&us); err != nil {
 				return fmt.Errorf("failed to decode response body: %w", err)
 			}
+			cancelCtx()
 
 			slog.Info("resuming upload",
 				slog.String("upload_id", us.Id),
@@ -137,6 +136,7 @@ func (rec *Recorder) uploadRecording() error {
 		if err := json.NewDecoder(resp.Body).Decode(&fi); err != nil {
 			return fmt.Errorf("failed to decode response body: %w", err)
 		}
+		cancelCtx()
 
 		break
 	}
