@@ -69,7 +69,7 @@ type RecorderConfig struct {
 	OutputFormat AVFormat
 
 	// TLS config
-	TLSCACertFile        string
+	TLSCACertFile         string
 	TLSInsecureSkipVerify bool
 }
 
