@@ -44,4 +44,3 @@ func TestNewRecorder(t *testing.T) {
 		require.NotNil(t, rec)
 	})
 }
-
