@@ -223,7 +223,6 @@ func TestConfigSetDefaults(t *testing.T) {
 	})
 }
 
-
 func TestLoadFromEnv(t *testing.T) {
 	t.Run("no env set", func(t *testing.T) {
 		cfg, err := LoadFromEnv()
