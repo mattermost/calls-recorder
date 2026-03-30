@@ -67,7 +67,6 @@ type RecorderConfig struct {
 	FrameRate    int
 	VideoPreset  H264Preset
 	OutputFormat AVFormat
-
 }
 
 func (p H264Preset) IsValid() bool {
