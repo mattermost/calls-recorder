@@ -56,6 +56,14 @@ term_handler() {
 # On callback, kill the last background process, which is `tail -f /dev/null` and execute the specified handler
 trap 'kill ${!}; term_handler' SIGTERM
 
+# Add custom CA certificate to the OS trust store if provided.
+# This allows the Go HTTP client (via SystemCertPool) to trust self-signed certs.
+# For Chromium, pass --ignore-certificate-errors via EXTRA_CHROMIUM_ARGS.
+if [ -n "${TLS_CA_CERT_FILE:-}" ]; then
+  cp "$TLS_CA_CERT_FILE" /usr/local/share/ca-certificates/calls-recorder-ca.crt
+  update-ca-certificates
+fi
+
 RECORDER_USER=calls
 
 # Create scoped (by jobID) data path.

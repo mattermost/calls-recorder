@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -297,37 +295,9 @@ func NewRecorder(cfg config.RecorderConfig, dataPath string) (*Recorder, error) 
 	client := model.NewAPIv4Client(cfg.SiteURL)
 	client.SetToken(cfg.AuthToken)
 
-	// Custom transport with optional CA certificate
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-
-	// Configure TLS based on provided settings
-	if cfg.TLSInsecureSkipVerify {
-		slog.Warn("TLS certificate verification is disabled - this should only be used in trusted environments")
-		transport.TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true,
-		}
-	} else if cfg.TLSCACertFile != "" {
-		caCert, err := os.ReadFile(cfg.TLSCACertFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read CA certificate: %w", err)
-		}
-		caCertPool, err := x509.SystemCertPool()
-		if err != nil {
-			caCertPool = x509.NewCertPool()
-		}
-		if !caCertPool.AppendCertsFromPEM(caCert) {
-			return nil, fmt.Errorf("failed to parse CA certificate")
-		}
-		transport.TLSClientConfig = &tls.Config{
-			RootCAs: caCertPool,
-		}
-		transport.ForceAttemptHTTP2 = true
-		slog.Info("loaded CA certificate for TLS", slog.String("path", cfg.TLSCACertFile))
-	}
-
 	client.HTTPClient = &http.Client{
 		Transport: &clientTransport{
-			transport: transport,
+			transport: http.DefaultTransport,
 		},
 	}
 

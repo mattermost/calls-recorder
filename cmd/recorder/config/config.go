@@ -68,9 +68,6 @@ type RecorderConfig struct {
 	VideoPreset  H264Preset
 	OutputFormat AVFormat
 
-	// TLS config
-	TLSCACertFile         string
-	TLSInsecureSkipVerify bool
 }
 
 func (p H264Preset) IsValid() bool {
@@ -318,12 +315,6 @@ func LoadFromEnv() (RecorderConfig, error) {
 
 	if val := os.Getenv("OUTPUT_FORMAT"); val != "" {
 		cfg.OutputFormat = AVFormat(val)
-	}
-
-	cfg.TLSCACertFile = os.Getenv("TLS_CA_CERT_FILE")
-
-	if val := os.Getenv("TLS_INSECURE_SKIP_VERIFY"); val != "" {
-		cfg.TLSInsecureSkipVerify = val == "true" || val == "1"
 	}
 
 	return cfg, nil
