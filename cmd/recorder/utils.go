@@ -253,5 +253,24 @@ func genChromiumOptions(cfg config.RecorderConfig) ([]chromedp.ExecAllocatorOpti
 		opts = append(opts, chromedp.Flag("unsafely-treat-insecure-origin-as-secure", strings.Join(insecureOrigins, ",")))
 	}
 
+	// Support additional Chromium arguments via environment variable
+	// This allows flexible configuration without code changes
+	// Example: EXTRA_CHROMIUM_ARGS="--ignore-certificate-errors --disable-web-security"
+	if extraArgs := os.Getenv("EXTRA_CHROMIUM_ARGS"); extraArgs != "" {
+		slog.Info("adding extra Chromium arguments", slog.String("args", extraArgs))
+		args := strings.Fields(extraArgs)
+		for _, arg := range args {
+			// Handle both --flag and --flag=value formats
+			if strings.HasPrefix(arg, "--") {
+				parts := strings.SplitN(arg[2:], "=", 2)
+				if len(parts) == 2 {
+					opts = append(opts, chromedp.Flag(parts[0], parts[1]))
+				} else {
+					opts = append(opts, chromedp.Flag(parts[0], true))
+				}
+			}
+		}
+	}
+
 	return opts, contextOpts, nil
 }

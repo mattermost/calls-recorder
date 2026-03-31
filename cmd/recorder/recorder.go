@@ -294,6 +294,7 @@ func NewRecorder(cfg config.RecorderConfig, dataPath string) (*Recorder, error) 
 
 	client := model.NewAPIv4Client(cfg.SiteURL)
 	client.SetToken(cfg.AuthToken)
+
 	client.HTTPClient = &http.Client{
 		Transport: &clientTransport{
 			transport: http.DefaultTransport,
