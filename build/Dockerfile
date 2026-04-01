@@ -11,6 +11,11 @@ ARG TARGETARCH
 ARG DEBIAN_FRONTEND=noninteractive
 
 COPY ./build/pkgs_list* .
+# Prevent dpkg from running service post-install scripts during build.
+# This avoids QEMU SIGSEGV when cross-building arm64 (systemd's post-install
+# script crashes under QEMU user-mode emulation).
+RUN echo '#!/bin/sh\nexit 101' > /usr/sbin/policy-rc.d && chmod +x /usr/sbin/policy-rc.d
+
 # hadolint ignore=DL3008,SC2046
 RUN set -ex && \
     apt-get update && \
