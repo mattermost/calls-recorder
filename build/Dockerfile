@@ -1,8 +1,8 @@
 # This dockerfile is used to build Mattermost calls-recorder
 # A multi stage build, with golang used as a builder
-# and debian sid as runner
+# and debian stable as runner
 ARG GO_VERSION
-FROM --platform=$TARGETPLATFORM debian:sid-20250929 AS base
+FROM --platform=$TARGETPLATFORM debian:stable-20260316 AS base
 
 # Setup system dependencies
 WORKDIR /workdir

@@ -21,7 +21,7 @@ import (
 
 const (
 	baseURL      = "http://ftp.debian.org/debian/dists"
-	suiteVersion = "sid"
+	suiteVersion = "stable"
 
 	pkgsListPath = "./pkgs_list"
 
