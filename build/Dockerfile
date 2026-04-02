@@ -11,15 +11,17 @@ ARG TARGETARCH
 ARG DEBIAN_FRONTEND=noninteractive
 
 COPY ./build/pkgs_list* .
-# Prevent dpkg from running service post-install scripts during build.
-# This avoids QEMU SIGSEGV when cross-building arm64 (systemd's post-install
-# script crashes under QEMU user-mode emulation).
-RUN printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d && chmod +x /usr/sbin/policy-rc.d
-
+# Prevent QEMU SIGSEGV when cross-building arm64: systemd's postinst script
+# runs binaries that crash under QEMU user-mode emulation. We extract systemd
+# first with --unpack (skips postinst), replace its postinst with a no-op,
+# then run the full install which will configure it harmlessly.
 # hadolint ignore=DL3008,SC2046
 RUN set -ex && \
     apt-get update && \
-    apt-get install --no-install-recommends -y $(cat pkgs_list_${TARGETARCH}) && \
+    apt-get install --no-install-recommends -y -d $(cat pkgs_list_${TARGETARCH}) && \
+    dpkg --force-depends --unpack /var/cache/apt/archives/systemd_*.deb 2>/dev/null || true && \
+    printf '#!/bin/sh\nexit 0\n' > /var/lib/dpkg/info/systemd.postinst && \
+    apt-get install --no-install-recommends -y -f $(cat pkgs_list_${TARGETARCH}) && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     adduser root pulse-access && \
