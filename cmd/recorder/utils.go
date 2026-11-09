@@ -107,7 +107,7 @@ func (rec *Recorder) getFilenameForCall(ext string) (string, error) {
 	defer cancelFn()
 
 	url := fmt.Sprintf("%s/plugins/%s/bot/calls/%s/filename", rec.cfg.SiteURL, pluginID, rec.cfg.CallID)
-	resp, err := rec.client.DoAPIRequest(ctx, http.MethodGet, url, "", "")
+	resp, err := doAPIRequest(ctx, rec.client, http.MethodGet, url, "", "")
 	if err != nil {
 		return "", fmt.Errorf("failed to get filename: %w", err)
 	}

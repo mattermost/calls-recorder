@@ -32,7 +32,7 @@ func (rec *Recorder) postJobStatus(status public.JobStatus) error {
 			time.Sleep(postJobStatusRetryDelay)
 		}
 		ctx, cancelCtx := context.WithTimeout(context.Background(), httpRequestTimeout)
-		resp, err := rec.client.DoAPIRequestBytes(ctx, http.MethodPost, apiURL, payload, "")
+		resp, err := doAPIRequestBytes(ctx, rec.client, http.MethodPost, apiURL, payload, "")
 		cancelCtx()
 		if err == nil {
 			resp.Body.Close()
