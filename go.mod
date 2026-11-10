@@ -6,7 +6,7 @@ require (
 	github.com/chromedp/cdproto v0.0.0-20240202021202-6d0b6a386732
 	github.com/chromedp/chromedp v0.9.5
 	github.com/mattermost/mattermost-plugin-calls/server/public v0.0.3
-	github.com/mattermost/mattermost/server/public v0.6.0
+	github.com/mattermost/mattermost/server/public v0.6.1
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/time v0.16.0
 )

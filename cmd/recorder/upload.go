@@ -77,7 +77,7 @@ func (rec *Recorder) uploadRecording() error {
 
 	ctx, cancelCtx := context.WithTimeout(context.Background(), httpRequestTimeout)
 	defer cancelCtx()
-	resp, err := doAPIRequestBytes(ctx, rec.client, http.MethodPost, apiURL+"/uploads", payload, "")
+	resp, err := rec.client.DoAPIRequestBytes(ctx, http.MethodPost, apiURL+"/uploads", payload, "")
 	if err != nil {
 		return fmt.Errorf("failed to create upload: %w", err)
 	}
@@ -92,7 +92,7 @@ func (rec *Recorder) uploadRecording() error {
 	for {
 		ctx, cancelCtx = context.WithTimeout(context.Background(), httpUploadTimeout)
 		defer cancelCtx()
-		resp, err = doAPIRequestReader(ctx, rec.client, http.MethodPost, apiURL+"/uploads/"+us.Id, file, nil)
+		resp, err = rec.client.DoAPIRequestReader(ctx, http.MethodPost, apiURL+"/uploads/"+us.Id, "", file, nil)
 		if err != nil {
 			return fmt.Errorf("failed to upload data: %w", err)
 		}
@@ -104,7 +104,7 @@ func (rec *Recorder) uploadRecording() error {
 		if resp.StatusCode == http.StatusNoContent {
 			ctx, cancelCtx := context.WithTimeout(context.Background(), httpRequestTimeout)
 			defer cancelCtx()
-			resp, err := doAPIRequest(ctx, rec.client, http.MethodGet, apiURL+"/uploads/"+us.Id, "", "")
+			resp, err := rec.client.DoAPIRequest(ctx, http.MethodGet, apiURL+"/uploads/"+us.Id, "", "")
 			if err != nil {
 				return fmt.Errorf("failed to get upload: %w", err)
 			}
@@ -153,7 +153,7 @@ func (rec *Recorder) uploadRecording() error {
 	url := fmt.Sprintf("%s/calls/%s/recordings", apiURL, rec.cfg.CallID)
 	ctx, cancelCtx = context.WithTimeout(context.Background(), httpRequestTimeout)
 	defer cancelCtx()
-	resp, err = doAPIRequestBytes(ctx, rec.client, http.MethodPost, url, payload, "")
+	resp, err = rec.client.DoAPIRequestBytes(ctx, http.MethodPost, url, payload, "")
 	if err != nil {
 		return fmt.Errorf("failed to save recording: %w", err)
 	}
