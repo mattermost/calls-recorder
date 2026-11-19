@@ -92,7 +92,7 @@ func (rec *Recorder) uploadRecording() error {
 	for {
 		ctx, cancelCtx = context.WithTimeout(context.Background(), httpUploadTimeout)
 		defer cancelCtx()
-		resp, err = rec.client.DoAPIRequestReader(ctx, http.MethodPost, apiURL+"/uploads/"+us.Id, file, nil)
+		resp, err = rec.client.DoAPIRequestReader(ctx, http.MethodPost, apiURL+"/uploads/"+us.Id, "", file, nil)
 		if err != nil {
 			return fmt.Errorf("failed to upload data: %w", err)
 		}
@@ -141,7 +141,7 @@ func (rec *Recorder) uploadRecording() error {
 		break
 	}
 
-	payload, err = json.Marshal(public.JobInfo{
+	payload, err = json.Marshal(public.RecordingJobInfo{
 		JobID:   rec.cfg.RecordingID,
 		FileIDs: []string{fi.Id},
 		PostID:  rec.cfg.PostID,
